@@ -14,7 +14,7 @@ export default defineConfig({
         }),
         tailwindcss(),
         wayfinder({
-            formVariants: true,
+            formVariants: process.env.NODE_ENV !== 'production',
         }),
         vue({
             template: {
