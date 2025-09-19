@@ -15,11 +15,11 @@ class PropertyApiTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        
+
         // Create test data
         $category = Category::factory()->create(['name' => 'Test Category']);
         $location = Locations::factory()->create(['name' => 'Test Location']);
-        
+
         // Create properties with different statuses
         Property::factory()->create([
             'category_id' => $category->id,
@@ -29,7 +29,7 @@ class PropertyApiTest extends TestCase
             'property_name' => 'Featured Available Property',
             'estimated_monthly' => 1000.00
         ]);
-        
+
         Property::factory()->create([
             'category_id' => $category->id,
             'location_id' => $location->id,
@@ -38,7 +38,7 @@ class PropertyApiTest extends TestCase
             'property_name' => 'Rented Property',
             'estimated_monthly' => 1500.00
         ]);
-        
+
         Property::factory()->create([
             'category_id' => $category->id,
             'location_id' => $location->id,

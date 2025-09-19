@@ -48,7 +48,7 @@ const codeValue = computed<string>(() => code.value.join(''));
 
         <div class="space-y-6">
             <template v-if="!showRecoveryInput">
-                <Form v-bind="store.form()" class="space-y-4" reset-on-error @error="code = []" #default="{ errors, processing, clearErrors }">
+                <Form :action="store()" class="space-y-4" reset-on-error @error="code = []" #default="{ errors, processing, clearErrors }">
                     <input type="hidden" name="code" :value="codeValue" />
                     <div class="flex flex-col items-center justify-center space-y-3 text-center">
                         <div class="flex w-full items-center justify-center">
@@ -75,7 +75,7 @@ const codeValue = computed<string>(() => code.value.join(''));
             </template>
 
             <template v-else>
-                <Form v-bind="store.form()" class="space-y-4" reset-on-error #default="{ errors, processing, clearErrors }">
+                <Form :action="store()" class="space-y-4" reset-on-error #default="{ errors, processing, clearErrors }">
                     <Input name="recovery_code" type="text" placeholder="Enter recovery code" :autofocus="showRecoveryInput" required />
                     <InputError :message="errors.recovery_code" />
                     <Button type="submit" class="w-full" :disabled="processing">Continue</Button>

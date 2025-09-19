@@ -33,7 +33,7 @@ const currentPasswordInput = ref<HTMLInputElement | null>(null);
                 <HeadingSmall title="Update password" description="Ensure your account is using a long, random password to stay secure" />
 
                 <Form
-                    v-bind="PasswordController.update.form()"
+                    :action="PasswordController.update()"
                     :options="{
                         preserveScroll: true,
                     }"

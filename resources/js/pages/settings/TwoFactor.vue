@@ -55,7 +55,7 @@ onUnmounted(() => {
 
                     <div>
                         <Button v-if="hasSetupData" @click="showSetupModal = true"> <ShieldCheck />Continue Setup </Button>
-                        <Form v-else v-bind="enable.form()" @success="showSetupModal = true" #default="{ processing }">
+                        <Form v-else :action="enable()" @success="showSetupModal = true" #default="{ processing }">
                             <Button type="submit" :disabled="processing"> <ShieldCheck />Enable 2FA</Button></Form
                         >
                     </div>
@@ -72,7 +72,7 @@ onUnmounted(() => {
                     <TwoFactorRecoveryCodes />
 
                     <div class="relative inline">
-                        <Form v-bind="disable.form()" #default="{ processing }">
+                        <Form :action="disable()" #default="{ processing }">
                             <Button variant="destructive" type="submit" :disabled="processing">
                                 <ShieldBan />
                                 Disable 2FA

@@ -37,7 +37,7 @@ const passwordInput = ref<InstanceType<typeof Input> | null>(null);
                 </DialogTrigger>
                 <DialogContent>
                     <Form
-                        v-bind="ProfileController.destroy.form()"
+                        :action="ProfileController.destroy()"
                         reset-on-success
                         @error="() => passwordInput?.$el?.focus()"
                         :options="{

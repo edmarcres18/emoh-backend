@@ -143,7 +143,7 @@ class Property extends Model
     public function updateStatusBasedOnRentals(): void
     {
         $hasActiveRental = $this->isRented();
-        
+
         if ($hasActiveRental && $this->status !== 'Rented') {
             $this->update(['status' => 'Rented']);
         } elseif (!$hasActiveRental && $this->status === 'Rented') {
@@ -159,12 +159,12 @@ class Property extends Model
         if ($this->isRented()) {
             return 'Rented';
         }
-        
+
         // If not rented and currently marked as 'Rented', change to 'Available'
         if ($this->status === 'Rented') {
             return 'Available';
         }
-        
+
         // Keep current status if it's not 'Rented' (could be 'Renovation', etc.)
         return $this->status;
     }
@@ -175,11 +175,11 @@ class Property extends Model
     public function syncStatusWithRentals(): bool
     {
         $appropriateStatus = $this->getAppropriateStatus();
-        
+
         if ($this->status !== $appropriateStatus) {
             return $this->update(['status' => $appropriateStatus]);
         }
-        
+
         return true;
     }
 
