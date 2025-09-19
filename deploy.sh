@@ -45,9 +45,9 @@ if [ "$ENVIRONMENT" = "prod" ]; then
     done
 
     # Build and start production containers
-    docker-compose -f docker-compose.prod.yml down
-    docker-compose -f docker-compose.prod.yml build --no-cache
-    docker-compose -f docker-compose.prod.yml up -d
+    docker compose -f docker-compose.prod.yml down
+    docker compose -f docker-compose.prod.yml build --no-cache
+    docker compose -f docker-compose.prod.yml up -d
 
     # Wait for services to be healthy
     echo "⏳ Waiting for services to be healthy..."
@@ -55,27 +55,27 @@ if [ "$ENVIRONMENT" = "prod" ]; then
 
     # Run Laravel setup commands
     echo "🔧 Running Laravel setup commands..."
-    docker-compose -f docker-compose.prod.yml exec app php artisan migrate --force
-    docker-compose -f docker-compose.prod.yml exec app php artisan config:cache
-    docker-compose -f docker-compose.prod.yml exec app php artisan route:cache
-    docker-compose -f docker-compose.prod.yml exec app php artisan view:cache
+    docker compose -f docker-compose.prod.yml exec app php artisan migrate --force
+    docker compose -f docker-compose.prod.yml exec app php artisan config:cache
+    docker compose -f docker-compose.prod.yml exec app php artisan route:cache
+    docker compose -f docker-compose.prod.yml exec app php artisan view:cache
 
 else
     echo "🛠️  Deploying in development mode..."
 
     # Build and start development containers
-    docker-compose down
-    docker-compose build --no-cache
-    docker-compose up -d
+    docker compose down
+    docker compose build --no-cache
+    docker compose up -d
 
     # Wait for services to be healthy
     echo "⏳ Waiting for services to be healthy..."
-    docker-compose ps
+    docker compose ps
 
     # Run Laravel setup commands
     echo "🔧 Running Laravel setup commands..."
-    docker-compose exec app php artisan migrate
-    docker-compose exec app php artisan db:seed
+    docker compose exec app php artisan migrate
+    docker compose exec app php artisan db:seed
 fi
 
 echo "✅ Deployment completed successfully!"
