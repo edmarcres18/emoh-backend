@@ -30,4 +30,4 @@ Dockerfile.prod
 Dockerfile
 docker-compose.prod.yml
 docker-compose.yml
-deploy.sh
+UBUNTU_SERVER_SETUP.md
