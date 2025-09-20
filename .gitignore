@@ -11,9 +11,9 @@
 /resources/js/wayfinder
 /vendor
 .DS_Store
-# .env
 .env.backup
 .env.prod
+.env
 .phpactor.json
 .phpunit.result.cache
 Homestead.json
@@ -30,4 +30,7 @@ Dockerfile.prod
 Dockerfile
 docker-compose.prod.yml
 docker-compose.yml
-UBUNTU_SERVER_SETUP.md
+.cursor
+HTTPS_CONFIGURATION.md
+DEPLOYMENT_GUIDE_SAMPLE.md
+UBUNTU_SERVER_DEPLOYMENT.md

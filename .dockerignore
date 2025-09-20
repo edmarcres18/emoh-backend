@@ -1,0 +1,22 @@
+# Ignore VCS and local config
+.git
+.env
+.env.*
+
+# Dependencies and build artifacts
+node_modules
+vendor
+public/build
+
+# Laravel runtime and caches
+storage
+public/storage
+bootstrap/cache/*.php
+
+# Docker & tooling
+.dockerignore
+Dockerfile*
+**/.DS_Store
+
+
+
