@@ -102,8 +102,10 @@ const mainNavItems = computed((): NavItem[] => {
             href: admin.siteSettings.index(),
             icon: Settings,
         });
+    }
 
-        // Add database backup for admins
+    // Only System Admin can access database backup
+    if (isSystemAdmin.value) {
         items.push({
             title: 'Database Backup',
             href: '/admin/database-backup',
@@ -122,7 +124,7 @@ const footerNavItems: NavItem[] = [
     },
     {
         title: 'Documentation',
-        href: 'https://github.com/edmarcres18',
+        href: '/documentation/overview',
         icon: BookOpen,
     },
 ];

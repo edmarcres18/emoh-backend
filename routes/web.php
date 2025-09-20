@@ -18,6 +18,25 @@ Route::get('/', function () {
     return redirect()->route('login');
 })->name('home');
 
+// Documentation routes - public access
+Route::get('/documentation', function () {
+    return Inertia::render('Documentation/Index');
+})->name('documentation');
+
+Route::get('/documentation/{slug}', function ($slug) {
+    // Valid documentation slugs
+    $validSlugs = [
+        'overview', 'features', 'architecture', 'data-models',
+        'api-endpoints', 'vue-components', 'deployment', 'support'
+    ];
+
+    if (!in_array($slug, $validSlugs)) {
+        abort(404);
+    }
+
+    return Inertia::render('Documentation/Index', ['slug' => $slug]);
+})->name('documentation.section');
+
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
