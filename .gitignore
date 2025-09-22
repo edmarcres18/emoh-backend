@@ -31,6 +31,3 @@ Dockerfile
 docker-compose.prod.yml
 docker-compose.yml
 .cursor
-HTTPS_CONFIGURATION.md
-DEPLOYMENT_GUIDE_SAMPLE.md
-UBUNTU_SERVER_DEPLOYMENT.md
