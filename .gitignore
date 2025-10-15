@@ -26,8 +26,7 @@ yarn-error.log
 /.nova
 /.vscode
 /.zed
-Dockerfile.prod
 Dockerfile
-docker-compose.prod.yml
 docker-compose.yml
 .cursor
+env.prod
