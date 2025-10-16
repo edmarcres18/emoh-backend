@@ -2,145 +2,516 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\DatabaseBackup;
-use App\Services\DatabaseBackupService;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 use Inertia\Inertia;
+use Inertia\Response;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\Process\Process;
+use Symfony\Component\Process\Exception\ProcessFailedException;
 
 class DatabaseBackupController extends Controller
 {
-    protected DatabaseBackupService $backupService;
-
-    public function __construct(DatabaseBackupService $backupService)
-    {
-        $this->backupService = $backupService;
-    }
-
     /**
-     * Display a listing of database backups.
+     * Display the database backup management page.
      */
-    public function index(Request $request)
+    public function index(): Response
     {
-        $filters = [
-            'search' => $request->get('search'),
-            'sort' => $request->get('sort', 'latest'),
-            'trash' => $request->get('trash', false),
-            'status' => $request->get('status'),
-            'type' => $request->get('type'),
-        ];
+        // Only Admin and System Admin can access backup management
+        $currentUser = auth()->user();
+        if (!$currentUser || !$currentUser->hasAdminPrivileges()) {
+            abort(403, 'You do not have permission to access database backup management.');
+        }
 
-        $backups = $this->backupService->getBackups($filters, 15);
+        $backups = $this->getAvailableBackups();
 
-        // Transform the data for the frontend
-        $transformedBackups = [
-            'data' => $backups->items(),
-            'current_page' => $backups->currentPage(),
-            'last_page' => $backups->lastPage(),
-            'per_page' => $backups->perPage(),
-            'total' => $backups->total(),
-            'from' => $backups->firstItem(),
-            'to' => $backups->lastItem(),
-            'links' => $backups->linkCollection()->toArray(),
-        ];
-
-        return Inertia::render('DatabaseBackup/Index', [
-            'backups' => $transformedBackups,
-            'filters' => $filters
+        return Inertia::render('Database/Backup', [
+            'backups' => $backups,
+            'databaseInfo' => $this->getDatabaseInfo(),
         ]);
     }
 
     /**
-     * Store a newly created database backup.
+     * Create a new database backup.
      */
-    public function store(Request $request)
+    public function backup(Request $request)
     {
+        $currentUser = auth()->user();
+        if (!$currentUser || !$currentUser->hasAdminPrivileges()) {
+            abort(403, 'You do not have permission to create database backups.');
+        }
+
         try {
-            $type = $request->get('type', 'manual');
-            $scheduledAt = $request->get('scheduled_at') ?
-                \Carbon\Carbon::parse($request->get('scheduled_at')) : null;
-
-            $backup = $this->backupService->createBackup($type, $scheduledAt);
-
-            $message = $type === 'scheduled'
-                ? "Database backup scheduled successfully for {$scheduledAt->format('Y-m-d H:i:s')}!"
-                : 'Database backup created successfully!';
-
-            return redirect()->back()->with('success', $message);
-
+            $backupPath = $this->createBackup();
+            
+            return redirect()
+                ->route('database-backup.index')
+                ->with('success', 'Database backup created successfully.');
         } catch (\Exception $e) {
-            return redirect()->back()->with('error', 'Failed to create database backup: ' . $e->getMessage());
+            return back()->withErrors(['error' => 'Failed to create backup: ' . $e->getMessage()]);
         }
     }
 
     /**
-     * Soft delete the specified database backup (move to trash).
+     * Download a specific backup file.
      */
-    public function destroy(int $id)
+    public function download(string $filename): BinaryFileResponse
     {
-        try {
-            $this->backupService->softDeleteBackup($id);
-            return redirect()->back()->with('success', 'Database backup moved to trash successfully!');
+        $currentUser = auth()->user();
+        if (!$currentUser || !$currentUser->hasAdminPrivileges()) {
+            abort(403, 'You do not have permission to download database backups.');
+        }
 
+        $backupPath = $this->getBackupStoragePath();
+        $filePath = $backupPath . DIRECTORY_SEPARATOR . $filename;
+
+        if (!File::exists($filePath)) {
+            abort(404, 'Backup file not found.');
+        }
+
+        // Validate filename to prevent directory traversal
+        if (basename($filename) !== $filename || !str_ends_with($filename, '.sql')) {
+            abort(403, 'Invalid backup file name.');
+        }
+
+        return response()->download($filePath);
+    }
+
+    /**
+     * Delete a specific backup file.
+     */
+    public function destroy(string $filename)
+    {
+        $currentUser = auth()->user();
+        if (!$currentUser || !$currentUser->hasAdminPrivileges()) {
+            abort(403, 'You do not have permission to delete database backups.');
+        }
+
+        $backupPath = $this->getBackupStoragePath();
+        $filePath = $backupPath . DIRECTORY_SEPARATOR . $filename;
+
+        // Validate filename
+        if (basename($filename) !== $filename || !str_ends_with($filename, '.sql')) {
+            abort(403, 'Invalid backup file name.');
+        }
+
+        if (File::exists($filePath)) {
+            File::delete($filePath);
+            return redirect()
+                ->route('database-backup.index')
+                ->with('success', 'Backup deleted successfully.');
+        }
+
+        return back()->withErrors(['error' => 'Backup file not found.']);
+    }
+
+    /**
+     * Restore database from a backup file.
+     */
+    public function restore(Request $request)
+    {
+        $currentUser = auth()->user();
+        if (!$currentUser || !$currentUser->hasAdminPrivileges()) {
+            abort(403, 'You do not have permission to restore database backups.');
+        }
+
+        $request->validate([
+            'filename' => 'required|string',
+        ]);
+
+        $filename = $request->input('filename');
+        $backupPath = $this->getBackupStoragePath();
+        $filePath = $backupPath . DIRECTORY_SEPARATOR . $filename;
+
+        // Validate filename
+        if (basename($filename) !== $filename || !str_ends_with($filename, '.sql')) {
+            return back()->withErrors(['error' => 'Invalid backup file name.']);
+        }
+
+        if (!File::exists($filePath)) {
+            return back()->withErrors(['error' => 'Backup file not found.']);
+        }
+
+        try {
+            $this->restoreFromFile($filePath);
+            
+            return redirect()
+                ->route('database-backup.index')
+                ->with('success', 'Database restored successfully from backup.');
         } catch (\Exception $e) {
-            return redirect()->back()->with('error', 'Failed to move backup to trash: ' . $e->getMessage());
+            return back()->withErrors(['error' => 'Failed to restore backup: ' . $e->getMessage()]);
         }
     }
 
     /**
-     * Restore a backup from trash.
+     * Upload and restore from SQL file.
      */
-    public function restore(int $id)
+    public function uploadAndRestore(Request $request)
     {
-        try {
-            $this->backupService->restoreBackup($id);
-            return redirect()->back()->with('success', 'Database backup restored successfully!');
+        $currentUser = auth()->user();
+        if (!$currentUser || !$currentUser->hasAdminPrivileges()) {
+            abort(403, 'You do not have permission to restore database backups.');
+        }
 
+        $request->validate([
+            'backup_file' => 'required|file|mimes:sql|max:102400', // Max 100MB
+        ]);
+
+        try {
+            $file = $request->file('backup_file');
+            $tempPath = $file->getRealPath();
+            
+            $this->restoreFromFile($tempPath);
+            
+            return redirect()
+                ->route('database-backup.index')
+                ->with('success', 'Database restored successfully from uploaded file.');
         } catch (\Exception $e) {
-            return redirect()->back()->with('error', 'Failed to restore backup: ' . $e->getMessage());
+            return back()->withErrors(['error' => 'Failed to restore from uploaded file: ' . $e->getMessage()]);
         }
     }
 
     /**
-     * Permanently delete a backup from trash.
+     * Get available backups from storage.
      */
-    public function forceDelete(int $id)
+    private function getAvailableBackups(): array
     {
-        try {
-            $this->backupService->permanentlyDeleteBackup($id);
-            return redirect()->back()->with('success', 'Database backup permanently deleted!');
-
-        } catch (\Exception $e) {
-            return redirect()->back()->with('error', 'Failed to permanently delete backup: ' . $e->getMessage());
+        $backupPath = $this->getBackupStoragePath();
+        
+        if (!File::exists($backupPath)) {
+            File::makeDirectory($backupPath, 0755, true);
+            return [];
         }
+
+        $files = File::files($backupPath);
+        $backups = [];
+
+        foreach ($files as $file) {
+            if (str_ends_with($file->getFilename(), '.sql')) {
+                $backups[] = [
+                    'filename' => $file->getFilename(),
+                    'size' => $this->formatBytes($file->getSize()),
+                    'size_bytes' => $file->getSize(),
+                    'created_at' => date('Y-m-d H:i:s', $file->getMTime()),
+                    'timestamp' => $file->getMTime(),
+                ];
+            }
+        }
+
+        // Sort by timestamp descending (newest first)
+        usort($backups, function ($a, $b) {
+            return $b['timestamp'] <=> $a['timestamp'];
+        });
+
+        return $backups;
     }
 
     /**
-     * Download the specified database backup.
+     * Create a database backup.
      */
-    public function download(int $id): BinaryFileResponse
+    private function createBackup(): string
     {
-        try {
-            $backup = DatabaseBackup::findOrFail($id);
+        $backupPath = $this->getBackupStoragePath();
+        
+        if (!File::exists($backupPath)) {
+            File::makeDirectory($backupPath, 0755, true);
+        }
 
-            if (!$backup->isCompleted()) {
-                abort(404, 'Backup not completed or not available for download');
+        $filename = 'emoh_backup_' . date('y_m_d_His') . '.sql';
+        $filePath = $backupPath . DIRECTORY_SEPARATOR . $filename;
+
+        $connection = config('database.default');
+        $dbConfig = config("database.connections.{$connection}");
+
+        if ($dbConfig['driver'] === 'sqlite') {
+            $this->backupSqlite($dbConfig, $filePath);
+        } elseif ($dbConfig['driver'] === 'mysql') {
+            $this->backupMysql($dbConfig, $filePath);
+        } elseif ($dbConfig['driver'] === 'pgsql') {
+            $this->backupPostgresql($dbConfig, $filePath);
+        } else {
+            throw new \Exception('Unsupported database driver: ' . $dbConfig['driver']);
+        }
+
+        return $filePath;
+    }
+
+    /**
+     * Backup SQLite database.
+     */
+    private function backupSqlite(array $config, string $backupPath): void
+    {
+        $databasePath = $config['database'];
+        
+        if (!File::exists($databasePath)) {
+            throw new \Exception('Database file not found: ' . $databasePath);
+        }
+
+        // For SQLite, we can use the .dump command via sqlite3 CLI or just copy
+        // Let's create a proper SQL dump
+        $pdo = DB::connection()->getPdo();
+        $tables = DB::select("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'");
+        
+        $dump = "-- SQLite Database Backup\n";
+        $dump .= "-- Generated: " . date('Y-m-d H:i:s') . "\n\n";
+        $dump .= "PRAGMA foreign_keys=OFF;\n";
+        $dump .= "BEGIN TRANSACTION;\n\n";
+
+        foreach ($tables as $table) {
+            $tableName = $table->name;
+            
+            // Get table schema
+            $createTable = DB::select("SELECT sql FROM sqlite_master WHERE type='table' AND name=?", [$tableName]);
+            if (!empty($createTable)) {
+                $dump .= "-- Table: {$tableName}\n";
+                $dump .= "DROP TABLE IF EXISTS \"{$tableName}\";\n";
+                $dump .= $createTable[0]->sql . ";\n\n";
             }
 
-            if (!file_exists($backup->file_path)) {
-                abort(404, 'Backup file not found');
+            // Get table data
+            $rows = DB::select("SELECT * FROM \"{$tableName}\"");
+            foreach ($rows as $row) {
+                $values = [];
+                foreach ((array)$row as $value) {
+                    if (is_null($value)) {
+                        $values[] = 'NULL';
+                    } elseif (is_numeric($value)) {
+                        $values[] = $value;
+                    } else {
+                        $values[] = "'" . str_replace("'", "''", $value) . "'";
+                    }
+                }
+                if (!empty($values)) {
+                    $dump .= "INSERT INTO \"{$tableName}\" VALUES(" . implode(',', $values) . ");\n";
+                }
             }
-
-            return response()->download($backup->file_path, $backup->filename, [
-                'Content-Type' => 'application/sql',
-                'Content-Disposition' => 'attachment; filename="' . $backup->filename . '"'
-            ]);
-
-        } catch (\Exception $e) {
-            abort(404, 'Backup file not found');
+            $dump .= "\n";
         }
+
+        $dump .= "COMMIT;\n";
+        $dump .= "PRAGMA foreign_keys=ON;\n";
+
+        File::put($backupPath, $dump);
+    }
+
+    /**
+     * Backup MySQL database.
+     */
+    private function backupMysql(array $config, string $backupPath): void
+    {
+        $host = $config['host'] ?? '127.0.0.1';
+        $port = $config['port'] ?? 3306;
+        $database = $config['database'];
+        $username = $config['username'];
+        $password = $config['password'] ?? '';
+
+        $command = sprintf(
+            'mysqldump --host=%s --port=%d --user=%s --password=%s --skip-comments --no-tablespaces %s > %s',
+            escapeshellarg($host),
+            $port,
+            escapeshellarg($username),
+            escapeshellarg($password),
+            escapeshellarg($database),
+            escapeshellarg($backupPath)
+        );
+
+        // For Windows compatibility
+        if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
+            $command = str_replace('>', '^>', $command);
+        }
+
+        $process = Process::fromShellCommandline($command);
+        $process->setTimeout(300); // 5 minutes timeout
+        
+        try {
+            $process->mustRun();
+        } catch (ProcessFailedException $e) {
+            // If mysqldump is not available, fallback to PHP-based backup
+            $this->backupMysqlPHP($database, $backupPath);
+        }
+    }
+
+    /**
+     * Backup MySQL database using PHP (fallback method).
+     */
+    private function backupMysqlPHP(string $database, string $backupPath): void
+    {
+        $tables = DB::select('SHOW TABLES');
+        $dump = "-- MySQL Database Backup\n";
+        $dump .= "-- Generated: " . date('Y-m-d H:i:s') . "\n\n";
+        $dump .= "SET FOREIGN_KEY_CHECKS=0;\n\n";
+
+        foreach ($tables as $table) {
+            $tableName = array_values((array)$table)[0];
+            
+            // Get create table statement
+            $createTable = DB::select("SHOW CREATE TABLE `{$tableName}`");
+            $dump .= "-- Table: {$tableName}\n";
+            $dump .= "DROP TABLE IF EXISTS `{$tableName}`;\n";
+            $dump .= $createTable[0]->{'Create Table'} . ";\n\n";
+
+            // Get table data
+            $rows = DB::select("SELECT * FROM `{$tableName}`");
+            if (count($rows) > 0) {
+                $dump .= "INSERT INTO `{$tableName}` VALUES\n";
+                $rowValues = [];
+                foreach ($rows as $row) {
+                    $values = [];
+                    foreach ((array)$row as $value) {
+                        if (is_null($value)) {
+                            $values[] = 'NULL';
+                        } else {
+                            $values[] = "'" . addslashes($value) . "'";
+                        }
+                    }
+                    $rowValues[] = '(' . implode(',', $values) . ')';
+                }
+                $dump .= implode(",\n", $rowValues) . ";\n\n";
+            }
+        }
+
+        $dump .= "SET FOREIGN_KEY_CHECKS=1;\n";
+        File::put($backupPath, $dump);
+    }
+
+    /**
+     * Backup PostgreSQL database.
+     */
+    private function backupPostgresql(array $config, string $backupPath): void
+    {
+        $host = $config['host'] ?? '127.0.0.1';
+        $port = $config['port'] ?? 5432;
+        $database = $config['database'];
+        $username = $config['username'];
+        $password = $config['password'] ?? '';
+
+        $command = sprintf(
+            'PGPASSWORD=%s pg_dump --host=%s --port=%d --username=%s --format=plain --file=%s %s',
+            escapeshellarg($password),
+            escapeshellarg($host),
+            $port,
+            escapeshellarg($username),
+            escapeshellarg($backupPath),
+            escapeshellarg($database)
+        );
+
+        $process = Process::fromShellCommandline($command);
+        $process->setTimeout(300);
+        
+        try {
+            $process->mustRun();
+        } catch (ProcessFailedException $e) {
+            throw new \Exception('Failed to create PostgreSQL backup. Make sure pg_dump is installed and accessible.');
+        }
+    }
+
+    /**
+     * Restore database from SQL file.
+     */
+    private function restoreFromFile(string $filePath): void
+    {
+        $connection = config('database.default');
+        $dbConfig = config("database.connections.{$connection}");
+
+        if ($dbConfig['driver'] === 'sqlite') {
+            $this->restoreSqlite($filePath);
+        } elseif ($dbConfig['driver'] === 'mysql') {
+            $this->restoreMysql($dbConfig, $filePath);
+        } elseif ($dbConfig['driver'] === 'pgsql') {
+            $this->restorePostgresql($dbConfig, $filePath);
+        } else {
+            throw new \Exception('Unsupported database driver: ' . $dbConfig['driver']);
+        }
+    }
+
+    /**
+     * Restore SQLite database.
+     */
+    private function restoreSqlite(string $backupPath): void
+    {
+        $sql = File::get($backupPath);
+        DB::unprepared($sql);
+    }
+
+    /**
+     * Restore MySQL database.
+     */
+    private function restoreMysql(array $config, string $backupPath): void
+    {
+        $sql = File::get($backupPath);
+        DB::unprepared($sql);
+    }
+
+    /**
+     * Restore PostgreSQL database.
+     */
+    private function restorePostgresql(array $config, string $backupPath): void
+    {
+        $sql = File::get($backupPath);
+        DB::unprepared($sql);
+    }
+
+    /**
+     * Get database information.
+     */
+    private function getDatabaseInfo(): array
+    {
+        $connection = config('database.default');
+        $dbConfig = config("database.connections.{$connection}");
+        
+        $info = [
+            'driver' => $dbConfig['driver'],
+            'connection' => $connection,
+        ];
+
+        if ($dbConfig['driver'] === 'sqlite') {
+            $info['database'] = basename($dbConfig['database']);
+            $info['path'] = $dbConfig['database'];
+            if (File::exists($dbConfig['database'])) {
+                $info['size'] = $this->formatBytes(File::size($dbConfig['database']));
+            }
+        } else {
+            $info['database'] = $dbConfig['database'] ?? 'N/A';
+            $info['host'] = $dbConfig['host'] ?? 'N/A';
+        }
+
+        // Get table count
+        try {
+            if ($dbConfig['driver'] === 'sqlite') {
+                $tables = DB::select("SELECT COUNT(*) as count FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'");
+            } elseif ($dbConfig['driver'] === 'mysql') {
+                $tables = DB::select('SELECT COUNT(*) as count FROM information_schema.tables WHERE table_schema = ?', [$dbConfig['database']]);
+            } elseif ($dbConfig['driver'] === 'pgsql') {
+                $tables = DB::select("SELECT COUNT(*) as count FROM information_schema.tables WHERE table_schema = 'public'");
+            }
+            $info['tables'] = $tables[0]->count ?? 0;
+        } catch (\Exception $e) {
+            $info['tables'] = 'N/A';
+        }
+
+        return $info;
+    }
+
+    /**
+     * Get backup storage path.
+     */
+    private function getBackupStoragePath(): string
+    {
+        return storage_path('app' . DIRECTORY_SEPARATOR . 'backups' . DIRECTORY_SEPARATOR . 'database');
+    }
+
+    /**
+     * Format bytes to human-readable format.
+     */
+    private function formatBytes(int $bytes, int $precision = 2): string
+    {
+        $units = ['B', 'KB', 'MB', 'GB', 'TB'];
+        
+        for ($i = 0; $bytes > 1024 && $i < count($units) - 1; $i++) {
+            $bytes /= 1024;
+        }
+        
+        return round($bytes, $precision) . ' ' . $units[$i];
     }
 }

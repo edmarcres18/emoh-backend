@@ -120,15 +120,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('rented/{rented}/renew', [RentedController::class, 'renew'])->name('admin.rented.renew');
         Route::post('rented/{rented}/end', [RentedController::class, 'end'])->name('admin.rented.end');
 
-        // Database Backup page and resource routes
+        // Database Backup Management (Admin only)
         Route::get('database-backup', [DatabaseBackupController::class, 'index'])->name('database-backup.index');
-        Route::post('database-backup', [DatabaseBackupController::class, 'store'])->name('database-backup.store');
-        Route::delete('database-backup/{backup}', [DatabaseBackupController::class, 'destroy'])->name('database-backup.destroy');
-        Route::get('database-backup/{backup}/download', [DatabaseBackupController::class, 'download'])->name('database-backup.download');
-
-        // Trash management routes
-        Route::post('database-backup/{backup}/restore', [DatabaseBackupController::class, 'restore'])->name('database-backup.restore');
-        Route::delete('database-backup/{backup}/force-delete', [DatabaseBackupController::class, 'forceDelete'])->name('database-backup.force-delete');
+        Route::post('database-backup/create', [DatabaseBackupController::class, 'backup'])->name('database-backup.create');
+        Route::get('database-backup/download/{filename}', [DatabaseBackupController::class, 'download'])->name('database-backup.download');
+        Route::delete('database-backup/{filename}', [DatabaseBackupController::class, 'destroy'])->name('database-backup.delete');
+        Route::post('database-backup/restore', [DatabaseBackupController::class, 'restore'])->name('database-backup.restore');
+        Route::post('database-backup/upload-restore', [DatabaseBackupController::class, 'uploadAndRestore'])->name('database-backup.upload-restore');
 
         // API routes for roles management
         Route::prefix('api')->group(function () {
