@@ -461,6 +461,16 @@ class DatabaseBackupController extends Controller
         $connection = config('database.default');
         $dbConfig = config("database.connections.{$connection}");
         
+        // Safety check for database configuration
+        if (!$dbConfig || !isset($dbConfig['driver'])) {
+            return [
+                'driver' => 'N/A',
+                'connection' => $connection ?? 'N/A',
+                'database' => 'N/A',
+                'tables' => 'N/A',
+            ];
+        }
+        
         $info = [
             'driver' => $dbConfig['driver'],
             'connection' => $connection,
