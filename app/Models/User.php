@@ -47,4 +47,12 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+
+    /**
+     * Check if user has admin privileges
+     */
+    public function hasAdminPrivileges(): bool
+    {
+        return $this->hasAnyRole(['System Admin', 'Admin']);
+    }
 }
