@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
 import { Head, router, usePage } from '@inertiajs/vue3';
-import { computed, reactive, ref, watch, onMounted, onBeforeUnmount } from 'vue';
+import { computed, ref } from 'vue';
 import {
   Dialog,
   DialogContent,
@@ -11,7 +11,6 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Database, Download, Upload, Trash2, RefreshCw, HardDrive, Server, Table } from 'lucide-vue-next';
-import Toast from './Toast.vue';
 
 interface Backup {
   filename: string;
@@ -40,82 +39,7 @@ const breadcrumbs = [
   { title: 'Database Backup', href: '/admin/database-backup' },
 ];
 
-// Toast state
-type ToastType = 'success' | 'error';
-const toast = reactive<{ show: boolean; type: ToastType; message: string }>({
-  show: false,
-  type: 'success',
-  message: '',
-});
-let toastTimer: number | undefined;
-const lastToast = ref<{ type: ToastType; message: string; at: number } | null>(null);
-
-function showToast(type: ToastType, message: string, duration = 3000) {
-  // Prevent duplicate toasts: same message/type already visible
-  if (toast.show && toast.type === type && toast.message === message) return;
-
-  // Prevent rapid duplicate toasts within debounce window
-  const now = Date.now();
-  if (
-    lastToast.value &&
-    lastToast.value.type === type &&
-    lastToast.value.message === message &&
-    now - lastToast.value.at < 1500
-  ) {
-    return;
-  }
-  lastToast.value = { type, message, at: now };
-
-  toast.show = true;
-  toast.type = type;
-  toast.message = message;
-  if (toastTimer) window.clearTimeout(toastTimer);
-  toastTimer = window.setTimeout(() => (toast.show = false), duration);
-}
-
-// (Removed unused closeToast to satisfy linter)
-
-onBeforeUnmount(() => {
-  if (toastTimer) window.clearTimeout(toastTimer);
-});
-
-// Display server flash messages
-const lastFlashMessage = ref<string | null>(null);
-onMounted(() => {
-  const anyPage: any = page.props;
-  const msg = (anyPage?.flash?.success as string | undefined) || '';
-  if (msg && msg !== lastFlashMessage.value) {
-    showToast('success', msg);
-    lastFlashMessage.value = msg;
-  }
-  const errMsg = (anyPage?.errors?.error as string | undefined) || '';
-  if (errMsg && errMsg !== lastFlashMessage.value) {
-    showToast('error', errMsg);
-    lastFlashMessage.value = errMsg;
-  }
-});
-
-watch(
-  () => (page.props as any)?.flash?.success as string | undefined,
-  (val) => {
-    const msg = val || '';
-    if (msg && msg !== lastFlashMessage.value) {
-      showToast('success', msg);
-      lastFlashMessage.value = msg;
-    }
-  }
-);
-
-watch(
-  () => (page.props as any)?.errors?.error as string | undefined,
-  (val) => {
-    const msg = val || '';
-    if (msg && msg !== lastFlashMessage.value) {
-      showToast('error', msg);
-      lastFlashMessage.value = msg;
-    }
-  }
-);
+// Local page-level toast removed; rely on global top-right notifications
 
 // Create backup
 const isCreatingBackup = ref(false);
@@ -126,9 +50,7 @@ function createBackup() {
     onSuccess: () => {
       // Handled by flash message
     },
-    onError: () => {
-      showToast('error', 'Failed to create backup. Please try again.');
-    },
+    onError: () => {},
     onFinish: () => {
       isCreatingBackup.value = false;
     },
@@ -157,9 +79,7 @@ function confirmDelete() {
     onSuccess: () => {
       cancelDelete();
     },
-    onError: () => {
-      showToast('error', 'Failed to delete the backup. Please try again.');
-    },
+    onError: () => {},
     onFinish: () => {
       isDeleting.value = false;
     },
@@ -188,9 +108,7 @@ function confirmRestore() {
     onSuccess: () => {
       cancelRestore();
     },
-    onError: () => {
-      showToast('error', 'Failed to restore the backup. Please try again.');
-    },
+    onError: () => {},
     onFinish: () => {
       isRestoring.value = false;
     },
@@ -244,9 +162,7 @@ function confirmUploadRestore() {
     onSuccess: () => {
       cancelUploadRestore();
     },
-    onError: () => {
-      showToast('error', 'Failed to upload and restore. Please check the file and try again.');
-    },
+    onError: () => {},
     onFinish: () => {
       isUploadRestoring.value = false;
     },
@@ -270,8 +186,6 @@ function formatDate(dateString: string): string {
   <Head title="Database Backup" />
   <AppLayout :breadcrumbs="breadcrumbs">
     <div class="mx-auto w-full max-w-7xl p-4">
-      <!-- Toast -->
-      <Toast v-model="toast.show" :type="toast.type" :message="toast.message" :duration="3500" />
 
       <div class="mb-6">
         <h1 class="text-2xl font-bold text-neutral-900 dark:text-white">Database Backup</h1>
