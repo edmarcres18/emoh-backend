@@ -104,15 +104,6 @@ const mainNavItems = computed((): NavItem[] => {
         });
     }
 
-    // Only System Admin can access database backup
-    if (isSystemAdmin.value) {
-        items.push({
-            title: 'Database Backup',
-            href: '/admin/database-backup',
-            icon: Database,
-        });
-    }
-
     return items;
 });
 

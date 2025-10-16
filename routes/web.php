@@ -10,7 +10,6 @@ use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\ClientController;
 use App\Http\Controllers\Admin\SiteSettingsController;
 use App\Http\Controllers\Admin\RentedController;
-use App\Http\Controllers\DatabaseBackupController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -120,15 +119,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('rented/{rented}/renew', [RentedController::class, 'renew'])->name('admin.rented.renew');
         Route::post('rented/{rented}/end', [RentedController::class, 'end'])->name('admin.rented.end');
 
-        // Database Backup page and resource routes
-        Route::get('database-backup', [DatabaseBackupController::class, 'index'])->name('database-backup.index');
-        Route::post('database-backup', [DatabaseBackupController::class, 'store'])->name('database-backup.store');
-        Route::delete('database-backup/{backup}', [DatabaseBackupController::class, 'destroy'])->name('database-backup.destroy');
-        Route::get('database-backup/{backup}/download', [DatabaseBackupController::class, 'download'])->name('database-backup.download');
-
-        // Trash management routes
-        Route::post('database-backup/{backup}/restore', [DatabaseBackupController::class, 'restore'])->name('database-backup.restore');
-        Route::delete('database-backup/{backup}/force-delete', [DatabaseBackupController::class, 'forceDelete'])->name('database-backup.force-delete');
 
         // API routes for roles management
         Route::prefix('api')->group(function () {
