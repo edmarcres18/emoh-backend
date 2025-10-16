@@ -48,8 +48,24 @@ const toast = reactive<{ show: boolean; type: ToastType; message: string }>({
   message: '',
 });
 let toastTimer: number | undefined;
+const lastToast = ref<{ type: ToastType; message: string; at: number } | null>(null);
 
 function showToast(type: ToastType, message: string, duration = 3000) {
+  // Prevent duplicate toasts: same message/type already visible
+  if (toast.show && toast.type === type && toast.message === message) return;
+
+  // Prevent rapid duplicate toasts within debounce window
+  const now = Date.now();
+  if (
+    lastToast.value &&
+    lastToast.value.type === type &&
+    lastToast.value.message === message &&
+    now - lastToast.value.at < 1500
+  ) {
+    return;
+  }
+  lastToast.value = { type, message, at: now };
+
   toast.show = true;
   toast.type = type;
   toast.message = message;
@@ -57,11 +73,7 @@ function showToast(type: ToastType, message: string, duration = 3000) {
   toastTimer = window.setTimeout(() => (toast.show = false), duration);
 }
 
-function closeToast() {
-  toast.show = false;
-  if (toastTimer) window.clearTimeout(toastTimer);
-  toastTimer = undefined;
-}
+// (Removed unused closeToast to satisfy linter)
 
 onBeforeUnmount(() => {
   if (toastTimer) window.clearTimeout(toastTimer);
