@@ -102,6 +102,15 @@ const mainNavItems = computed((): NavItem[] => {
             href: admin.siteSettings.index(),
             icon: Settings,
         });
+
+        // Add database backup for system admin
+        if (isSystemAdmin.value) {
+            items.push({
+                title: 'Database Backup',
+                href: '/admin/database-backup',
+                icon: Database,
+            });
+        }
     }
 
     return items;

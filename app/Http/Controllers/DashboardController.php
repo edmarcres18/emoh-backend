@@ -13,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\File;
 use Inertia\Inertia;
 use Carbon\Carbon;
 
@@ -537,12 +538,49 @@ class DashboardController extends Controller
 
     private function getBackupStatus()
     {
+        $backupPath = storage_path('app' . DIRECTORY_SEPARATOR . 'backups' . DIRECTORY_SEPARATOR . 'database');
+
+        if (!File::exists($backupPath)) {
+            return [
+                'last_backup' => null,
+                'backup_size' => '0 MB',
+                'status' => 'no_backups',
+                'next_scheduled' => Carbon::now()->addHours(18),
+                'retention_days' => 30,
+            ];
+        }
+
+        $files = File::files($backupPath);
+        $backupFiles = collect($files)->filter(function ($file) {
+            return str_ends_with($file->getFilename(), '.sql');
+        });
+
+        if ($backupFiles->isEmpty()) {
+            return [
+                'last_backup' => null,
+                'backup_size' => '0 MB',
+                'status' => 'no_backups',
+                'next_scheduled' => Carbon::now()->addHours(18),
+                'retention_days' => 30,
+            ];
+        }
+
+        $latestBackup = $backupFiles->sortByDesc(function ($file) {
+            return $file->getMTime();
+        })->first();
+
+        $totalSize = $backupFiles->sum(function ($file) {
+            return $file->getSize();
+        });
+
         return [
-            'last_backup' => Carbon::now()->subHours(6),
-            'backup_size' => '2.4 GB',
+            'last_backup' => Carbon::createFromTimestamp($latestBackup->getMTime()),
+            'backup_size' => $this->formatBytes($totalSize),
             'status' => 'success',
             'next_scheduled' => Carbon::now()->addHours(18),
             'retention_days' => 30,
+            'backup_count' => $backupFiles->count(),
+            'latest_filename' => $latestBackup->getFilename(),
         ];
     }
 

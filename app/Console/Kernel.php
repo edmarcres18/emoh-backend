@@ -13,12 +13,11 @@ class Kernel extends ConsoleKernel
     protected function schedule(Schedule $schedule): void
     {
         // Daily database backup at 2:00 AM
-        $schedule->command('backup:database --cleanup --retention=30')
+        $schedule->command('backup:database --keep-days=30')
                  ->dailyAt('02:00')
                  ->name('daily-database-backup')
                  ->withoutOverlapping()
-                 ->runInBackground()
-                 ->emailOutputOnFailure(config('mail.admin_email', 'admin@example.com'));
+                 ->runInBackground();
 
         // Weekly cleanup of old backups (every Sunday at 3:00 AM)
         $schedule->command('backup:cleanup --retention=30')

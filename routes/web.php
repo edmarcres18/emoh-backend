@@ -10,6 +10,7 @@ use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\ClientController;
 use App\Http\Controllers\Admin\SiteSettingsController;
 use App\Http\Controllers\Admin\RentedController;
+use App\Http\Controllers\DatabaseBackupController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -104,6 +105,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('site-settings/logo', [SiteSettingsController::class, 'removeLogo'])->name('admin.site-settings.remove-logo');
         Route::delete('site-settings/favicon', [SiteSettingsController::class, 'removeFavicon'])->name('admin.site-settings.remove-favicon');
         Route::post('site-settings/clear-cache', [SiteSettingsController::class, 'clearCache'])->name('admin.site-settings.clear-cache');
+
+        // Database Backup Management (Admin only)
+        Route::get('database-backup', [DatabaseBackupController::class, 'index'])->name('database-backup.index');
+        Route::post('database-backup/create', [DatabaseBackupController::class, 'backup'])->name('database-backup.create');
+        Route::get('database-backup/download/{filename}', [DatabaseBackupController::class, 'download'])->name('database-backup.download');
+        Route::delete('database-backup/{filename}', [DatabaseBackupController::class, 'destroy'])->name('database-backup.delete');
+        Route::post('database-backup/restore', [DatabaseBackupController::class, 'restore'])->name('database-backup.restore');
+        Route::post('database-backup/upload-restore', [DatabaseBackupController::class, 'uploadAndRestore'])->name('database-backup.upload-restore');
 
         // Rented page and resource routes
         Route::get('rented', [RentedController::class, 'indexPage'])->name('admin.rented.index');
