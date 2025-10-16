@@ -89,18 +89,11 @@ const mainNavItems = computed((): NavItem[] => {
 
         // Only System Admin can access permissions management
         if (isSystemAdmin.value) {
-            items.push(
-                {
-                    title: 'Permissions',
-                    href: admin.permissions.index(),
-                    icon: Lock,
-                },
-                {
-                    title: 'Database Backups',
-                    href: '/admin/database-backups',
-                    icon: Database,
-                }
-            );
+            items.push({
+                title: 'Permissions',
+                href: admin.permissions.index(),
+                icon: Lock,
+            });
         }
 
         // Add site settings for admins

@@ -12,17 +12,25 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
-        // Daily scheduled database backup at 2:00 AM
-        $schedule->command('backups:create-scheduled')
+        // Daily database backup at 2:00 AM
+        $schedule->command('backup:database --cleanup --retention=30')
                  ->dailyAt('02:00')
                  ->name('daily-database-backup')
                  ->withoutOverlapping()
+                 ->runInBackground()
+                 ->emailOutputOnFailure(config('mail.admin_email', 'admin@example.com'));
+
+        // Weekly cleanup of old backups (every Sunday at 3:00 AM)
+        $schedule->command('backup:cleanup --retention=30')
+                 ->weeklyOn(0, '03:00')
+                 ->name('weekly-backup-cleanup')
+                 ->withoutOverlapping()
                  ->runInBackground();
 
-        // Daily cleanup: Move backups older than 15 days to trash, delete trash older than 7 days
-        $schedule->command('backups:clean --trash-days=15 --delete-days=7')
-                 ->dailyAt('03:00')
-                 ->name('daily-backup-cleanup')
+        // Monthly deep cleanup (keep only 90 days, every 1st of month at 4:00 AM)
+        $schedule->command('backup:cleanup --retention=90')
+                 ->monthlyOn(1, '04:00')
+                 ->name('monthly-backup-cleanup')
                  ->withoutOverlapping()
                  ->runInBackground();
     }

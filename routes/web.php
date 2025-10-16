@@ -10,7 +10,6 @@ use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\ClientController;
 use App\Http\Controllers\Admin\SiteSettingsController;
 use App\Http\Controllers\Admin\RentedController;
-use App\Http\Controllers\Admin\DatabaseBackupController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -119,27 +118,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('rented/{rented}/mark-expired', [RentedController::class, 'markExpired'])->name('admin.rented.mark-expired');
         Route::post('rented/{rented}/renew', [RentedController::class, 'renew'])->name('admin.rented.renew');
         Route::post('rented/{rented}/end', [RentedController::class, 'end'])->name('admin.rented.end');
-    });
 
-    // Database Backup routes - System Admin only
-    Route::prefix('admin')->middleware(['role:System Admin'])->group(function () {
-        // Database Backup page and resource routes
-        Route::get('database-backups', [DatabaseBackupController::class, 'index'])->name('admin.database-backups.index');
-        Route::post('database-backups', [DatabaseBackupController::class, 'store'])->name('admin.database-backups.store');
-        Route::get('database-backups/{backup}/download', [DatabaseBackupController::class, 'download'])->name('admin.database-backups.download');
-        Route::post('database-backups/{backup}/restore', [DatabaseBackupController::class, 'restore'])->name('admin.database-backups.restore');
-        Route::post('database-backups/{backup}/trash', [DatabaseBackupController::class, 'trash'])->name('admin.database-backups.trash');
-        Route::post('database-backups/{backup}/restore-from-trash', [DatabaseBackupController::class, 'restoreFromTrash'])->name('admin.database-backups.restore-from-trash');
-        Route::delete('database-backups/{backup}', [DatabaseBackupController::class, 'destroy'])->name('admin.database-backups.destroy');
 
-        // API routes for database backups
-        Route::prefix('api')->group(function () {
-            Route::get('database-backups/stats', [DatabaseBackupController::class, 'stats'])->name('admin.api.database-backups.stats');
-        });
-    });
-
-    // Admin routes - protected by role middleware
-    Route::prefix('admin')->middleware(['role:System Admin|Admin'])->group(function () {
         // API routes for roles management
         Route::prefix('api')->group(function () {
             Route::get('roles', [RoleController::class, 'index'])->name('admin.api.roles.index');
