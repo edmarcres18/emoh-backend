@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DatabaseBackupController;
 use App\Http\Controllers\LocationsController;
 use App\Http\Controllers\PropertyController;
 use App\Http\Controllers\Admin\RoleController;
@@ -119,6 +120,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('rented/{rented}/renew', [RentedController::class, 'renew'])->name('admin.rented.renew');
         Route::post('rented/{rented}/end', [RentedController::class, 'end'])->name('admin.rented.end');
 
+        // Database Backup Management (Admin only)
+        Route::get('database-backup', [DatabaseBackupController::class, 'index'])->name('database-backup.index');
+        Route::post('database-backup/create', [DatabaseBackupController::class, 'backup'])->name('database-backup.create');
+        Route::get('database-backup/download/{filename}', [DatabaseBackupController::class, 'download'])->name('database-backup.download');
+        Route::delete('database-backup/{filename}', [DatabaseBackupController::class, 'destroy'])->name('database-backup.delete');
+        Route::post('database-backup/restore', [DatabaseBackupController::class, 'restore'])->name('database-backup.restore');
+        Route::post('database-backup/upload-restore', [DatabaseBackupController::class, 'uploadAndRestore'])->name('database-backup.upload-restore');
 
         // API routes for roles management
         Route::prefix('api')->group(function () {
