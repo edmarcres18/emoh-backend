@@ -97,18 +97,11 @@ const mainNavItems = computed((): NavItem[] => {
         }
 
         // Add site settings for admins
-        items.push(
-            {
-                title: 'Site Settings',
-                href: admin.siteSettings.index(),
-                icon: Settings,
-            },
-            {
-                title: 'Database Backup',
-                href: '/admin/database-backup',
-                icon: Database,
-            }
-        );
+        items.push({
+            title: 'Site Settings',
+            href: admin.siteSettings.index(),
+            icon: Settings,
+        });
     }
 
     return items;
