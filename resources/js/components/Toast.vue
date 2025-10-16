@@ -35,29 +35,24 @@ const testToast = () => {
 };
 
 // Watch for flash messages from Laravel
-watch(() => page.props.flash, (flash: FlashMessage | null) => {
-    console.log('Flash messages received:', flash); // Debug log
+watch(() => page.props.flash as FlashMessage | null, (flash) => {
     if (flash?.success) {
-        console.log('Showing success toast:', flash.success); // Debug log
         showToastNotification(flash.success, 'success');
     }
     if (flash?.error) {
-        console.log('Showing error toast:', flash.error); // Debug log
         showToastNotification(flash.error, 'error');
     }
     if (flash?.warning) {
-        console.log('Showing warning toast:', flash.warning); // Debug log
         showToastNotification(flash.warning, 'warning');
     }
     if (flash?.info) {
-        console.log('Showing info toast:', flash.info); // Debug log
         showToastNotification(flash.info, 'info');
     }
 }, { immediate: true, deep: true });
 
-// Also watch for page props changes
+// Component mounted
 onMounted(() => {
-    console.log('Toast component mounted, initial flash:', page.props.flash);
+    // Toast component initialized
 });
 
 const getToastClasses = () => {

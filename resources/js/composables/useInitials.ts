@@ -1,12 +1,21 @@
 export function getInitials(fullName?: string): string {
-    if (!fullName) return '';
+    if (!fullName || typeof fullName !== 'string') return '';
 
-    const names = fullName.trim().split(' ');
+    // Filter out empty strings that may result from multiple spaces
+    const names = fullName.trim().split(' ').filter(name => name.length > 0);
 
     if (names.length === 0) return '';
-    if (names.length === 1) return names[0].charAt(0).toUpperCase();
+    if (names.length === 1) {
+        const firstChar = names[0]?.[0];
+        return firstChar ? firstChar.toUpperCase() : '';
+    }
 
-    return `${names[0].charAt(0)}${names[names.length - 1].charAt(0)}`.toUpperCase();
+    const firstChar = names[0]?.[0];
+    const lastChar = names[names.length - 1]?.[0];
+    
+    if (!firstChar || !lastChar) return '';
+    
+    return `${firstChar}${lastChar}`.toUpperCase();
 }
 
 export function useInitials() {

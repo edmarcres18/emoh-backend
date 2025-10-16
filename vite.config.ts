@@ -30,4 +30,14 @@ export default defineConfig({
             '@': resolve(__dirname, 'resources/js'),
         },
     },
+    build: {
+        minify: 'terser',
+        terserOptions: {
+            compress: {
+                // Remove console.* statements in production for security
+                drop_console: true,
+                drop_debugger: true,
+            },
+        },
+    },
 });
