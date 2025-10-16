@@ -97,9 +97,7 @@ class DatabaseBackupController extends Controller
     {
         // Only System Admin can create backups
         if (!auth()->user()->hasRole('System Admin')) {
-            return response()->json([
-                'message' => 'Only System Admin can create database backups'
-            ], 403);
+            abort(403, 'Only System Admin can create database backups');
         }
 
         try {
@@ -152,10 +150,7 @@ class DatabaseBackupController extends Controller
                 'created_by' => auth()->id(),
             ]);
 
-            return response()->json([
-                'message' => 'Database backup created successfully',
-                'backup' => $backup->load('creator'),
-            ], 201);
+            return back()->with('success', 'Database backup created successfully: ' . $filename);
 
         } catch (\Exception $e) {
             \Log::error('Database backup failed: ' . $e->getMessage());
@@ -165,10 +160,7 @@ class DatabaseBackupController extends Controller
                 unlink($backupPath);
             }
 
-            return response()->json([
-                'message' => 'Failed to create database backup',
-                'error' => $e->getMessage()
-            ], 500);
+            return back()->with('error', 'Failed to create database backup: ' . $e->getMessage());
         }
     }
 
@@ -206,25 +198,19 @@ class DatabaseBackupController extends Controller
     {
         // Only System Admin can restore backups
         if (!auth()->user()->hasRole('System Admin')) {
-            return response()->json([
-                'message' => 'Only System Admin can restore database backups'
-            ], 403);
+            abort(403, 'Only System Admin can restore database backups');
         }
 
         // Cannot restore trashed backups
         if ($backup->isTrashed()) {
-            return response()->json([
-                'message' => 'Cannot restore a trashed backup. Please restore it from trash first.'
-            ], 400);
+            return back()->with('error', 'Cannot restore a trashed backup. Please restore it from trash first.');
         }
 
         try {
             $filePath = storage_path('app/' . $backup->path);
 
             if (!file_exists($filePath)) {
-                return response()->json([
-                    'message' => 'Backup file not found'
-                ], 404);
+                return back()->with('error', 'Backup file not found on disk');
             }
 
             // Get database configuration
@@ -253,17 +239,12 @@ class DatabaseBackupController extends Controller
                 throw new \Exception('Database restore failed: ' . implode("\n", $output));
             }
 
-            return response()->json([
-                'message' => 'Database restored successfully from backup: ' . $backup->filename
-            ]);
+            return back()->with('success', 'Database restored successfully from backup: ' . $backup->filename);
 
         } catch (\Exception $e) {
             \Log::error('Database restore failed: ' . $e->getMessage());
 
-            return response()->json([
-                'message' => 'Failed to restore database',
-                'error' => $e->getMessage()
-            ], 500);
+            return back()->with('error', 'Failed to restore database: ' . $e->getMessage());
         }
     }
 
@@ -274,25 +255,19 @@ class DatabaseBackupController extends Controller
     {
         // Only System Admin can trash backups
         if (!auth()->user()->hasRole('System Admin')) {
-            return response()->json([
-                'message' => 'Only System Admin can trash database backups'
-            ], 403);
+            abort(403, 'Only System Admin can trash database backups');
         }
 
         // Check if already trashed
         if ($backup->isTrashed()) {
-            return response()->json([
-                'message' => 'Backup is already in trash'
-            ], 400);
+            return back()->with('error', 'Backup is already in trash');
         }
 
         $backup->update([
             'trashed_at' => now()
         ]);
 
-        return response()->json([
-            'message' => 'Backup moved to trash successfully'
-        ]);
+        return back()->with('success', 'Backup moved to trash successfully');
     }
 
     /**
@@ -302,25 +277,19 @@ class DatabaseBackupController extends Controller
     {
         // Only System Admin can restore from trash
         if (!auth()->user()->hasRole('System Admin')) {
-            return response()->json([
-                'message' => 'Only System Admin can restore backups from trash'
-            ], 403);
+            abort(403, 'Only System Admin can restore backups from trash');
         }
 
         // Check if in trash
         if (!$backup->isTrashed()) {
-            return response()->json([
-                'message' => 'Backup is not in trash'
-            ], 400);
+            return back()->with('error', 'Backup is not in trash');
         }
 
         $backup->update([
             'trashed_at' => null
         ]);
 
-        return response()->json([
-            'message' => 'Backup restored from trash successfully'
-        ]);
+        return back()->with('success', 'Backup restored from trash successfully');
     }
 
     /**
@@ -330,9 +299,7 @@ class DatabaseBackupController extends Controller
     {
         // Only System Admin can delete backups
         if (!auth()->user()->hasRole('System Admin')) {
-            return response()->json([
-                'message' => 'Only System Admin can delete database backups'
-            ], 403);
+            abort(403, 'Only System Admin can delete database backups');
         }
 
         try {
@@ -345,17 +312,12 @@ class DatabaseBackupController extends Controller
             // Delete database record
             $backup->delete();
 
-            return response()->json([
-                'message' => 'Backup permanently deleted successfully'
-            ]);
+            return back()->with('success', 'Backup permanently deleted successfully');
 
         } catch (\Exception $e) {
             \Log::error('Failed to delete backup: ' . $e->getMessage());
 
-            return response()->json([
-                'message' => 'Failed to delete backup',
-                'error' => $e->getMessage()
-            ], 500);
+            return back()->with('error', 'Failed to delete backup: ' . $e->getMessage());
         }
     }
 

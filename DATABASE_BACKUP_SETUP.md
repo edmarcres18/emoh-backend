@@ -218,10 +218,30 @@ chown -R www-data:www-data storage/app/backups  # Linux
 ```
 
 ### Backup Creation Fails
+
+**"Backup creation failed: " (empty error message)**
+This usually means mysqldump command failed. Check:
+1. Ensure mysqldump is installed and accessible:
+   ```bash
+   which mysqldump  # Linux/Mac
+   where mysqldump  # Windows
+   ```
+2. Add mysqldump to PATH if not found
+3. Test manually:
+   ```bash
+   mysqldump --user=YOUR_USER --password=YOUR_PASS --host=localhost YOUR_DB > test.sql
+   ```
+
+**Other Backup Creation Issues:**
 1. Check MySQL credentials in `.env`
 2. Verify database exists
 3. Check user permissions: `GRANT SELECT, LOCK TABLES ON database.* TO 'user'@'localhost';`
-4. Check Laravel logs for detailed error
+4. Check Laravel logs for detailed error: `storage/logs/laravel.log`
+5. Ensure storage directory is writable:
+   ```bash
+   chmod 755 storage/app/backups
+   chown -R www-data:www-data storage/app/backups  # Linux
+   ```
 
 ### Restore Fails
 1. Ensure backup file exists and is readable
