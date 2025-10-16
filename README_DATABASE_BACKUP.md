@@ -17,13 +17,13 @@ A comprehensive, production-ready database backup solution for the EMOH Property
 - ✅ **Smart Trash System** - Auto-move backups older than 15 days to trash
 - ✅ **Auto-Cleanup** - Permanently delete trash items after 7 days
 - ✅ **Scheduled Backups** - Daily automated backups at midnight
-- ✅ **Async Processing** - Non-blocking queue-based operations
+- ✅ **Synchronous Operations** - Reliable execution with proper error handling
 - ✅ **Real-time Updates** - Auto-refresh every 30 seconds
 - ✅ **Statistics Dashboard** - Track backup metrics and storage usage
 
 ### Technical Features
 - ✅ **Role-Based Access** - System Admin only (Laravel Policies)
-- ✅ **Queue Jobs** - Async backup creation and restoration
+- ✅ **Scheduled Jobs** - Automated daily backups and cleanup
 - ✅ **Artisan Commands** - CLI tools for automation
 - ✅ **Comprehensive Logging** - Track all operations
 - ✅ **Error Handling** - Graceful failure recovery
@@ -38,17 +38,12 @@ A comprehensive, production-ready database backup solution for the EMOH Property
 php artisan migrate
 ```
 
-### 2. Start Queue Worker
-```bash
-php artisan queue:work
-```
-
-### 3. Setup Cron (Production)
+### 2. Setup Cron (Production)
 ```bash
 * * * * * cd /path/to/project && php artisan schedule:run >> /dev/null 2>&1
 ```
 
-### 4. Access UI
+### 3. Access UI
 Navigate to: `http://your-domain/admin/database-backups`
 
 ## 📂 File Structure
@@ -85,11 +80,7 @@ routes/
 
 ### Create Backup (CLI)
 ```bash
-# Synchronous
 php artisan backup:database
-
-# Async (queued)
-php artisan backup:database --queue
 ```
 
 ### Create Backup (API)
@@ -138,7 +129,7 @@ const response = await axios.post(`/admin/api/database-backups/${backupId}/resto
 
 | Time | Command | Action |
 |------|---------|--------|
-| 00:00 | `backup:database --queue` | Daily backup |
+| 00:00 | `backup:database` | Daily backup (runs in background) |
 | 01:00 | `backup:auto-trash` | Move old backups to trash (>15 days) |
 | 02:00 | `backup:cleanup-trash` | Delete trash items (>7 days) |
 
@@ -192,14 +183,6 @@ php artisan tinker
 >>> DB::connection()->getPdo();
 ```
 
-### Queue Not Processing
-```bash
-# Check queue worker
-ps aux | grep queue:work
-
-# Restart queue
-php artisan queue:restart
-```
 
 ### Permission Errors
 ```bash
@@ -216,24 +199,11 @@ chown -R www-data:www-data storage/
 php artisan tinker
 >>> App\Models\DatabaseBackup::latest()->take(5)->get()
 
-# Check failed jobs
-php artisan queue:failed
-
 # Monitor logs
 tail -f storage/logs/laravel.log
 ```
 
 ## 🚀 Production Deployment
-
-### Supervisor Setup
-```ini
-[program:laravel-worker]
-command=php /var/www/emoh-backend/artisan queue:work --sleep=3 --tries=3
-autostart=true
-autorestart=true
-user=www-data
-numprocs=2
-```
 
 ### Cron Setup
 ```bash
@@ -247,7 +217,7 @@ numprocs=2
 - Laravel 12
 - Node.js 18+ (for frontend)
 - `mysqldump` and `mysql` CLI tools
-- Queue worker (Supervisor in production)
+- Cron job for scheduled tasks
 
 ## 🎓 Best Practices
 

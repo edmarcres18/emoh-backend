@@ -2,7 +2,6 @@
 
 namespace App\Console\Commands;
 
-use App\Jobs\CreateDatabaseBackupJob;
 use App\Services\DatabaseBackupService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
@@ -14,8 +13,7 @@ class CreateDatabaseBackup extends Command
      *
      * @var string
      */
-    protected $signature = 'backup:database 
-                            {--queue : Queue the backup job instead of running synchronously}';
+    protected $signature = 'backup:database';
 
     /**
      * The console command description.
@@ -35,23 +33,17 @@ class CreateDatabaseBackup extends Command
             // Create backup record
             $backup = $service->createBackup();
 
-            if ($this->option('queue')) {
-                // Queue the backup job
-                CreateDatabaseBackupJob::dispatch($backup);
-                $this->info("Backup job queued successfully. ID: {$backup->id}");
-                Log::info('Database backup job queued', ['backup_id' => $backup->id]);
-            } else {
-                // Run backup synchronously
-                $this->info('Creating backup synchronously...');
-                $service->executeBackup($backup);
-                $this->info("Backup created successfully!");
-                $this->info("Filename: {$backup->filename}");
-                $this->info("File size: {$backup->formatted_file_size}");
-                Log::info('Database backup created successfully', [
-                    'backup_id' => $backup->id,
-                    'file_size' => $backup->file_size,
-                ]);
-            }
+            // Run backup synchronously
+            $this->info('Creating backup...');
+            $service->executeBackup($backup);
+            $this->info("Backup created successfully!");
+            $this->info("Filename: {$backup->filename}");
+            $this->info("File size: {$backup->formatted_file_size}");
+            
+            Log::info('Database backup created successfully', [
+                'backup_id' => $backup->id,
+                'file_size' => $backup->file_size,
+            ]);
 
             return self::SUCCESS;
 

@@ -81,9 +81,12 @@ const createBackup = async () => {
     if (creating.value) return;
     creating.value = true;
     try {
-        await axios.post('/admin/api/database-backups');
-        fetchBackups();
-        fetchStatistics();
+        const response = await axios.post('/admin/api/database-backups');
+        if (response.data.success) {
+            // Backup created synchronously, refresh the list
+            fetchBackups();
+            fetchStatistics();
+        }
     } catch (error: any) {
         console.error('Failed to create backup:', error);
     } finally {

@@ -3,8 +3,6 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Jobs\CreateDatabaseBackupJob;
-use App\Jobs\RestoreDatabaseBackupJob;
 use App\Models\DatabaseBackup;
 use App\Services\DatabaseBackupService;
 use Illuminate\Http\JsonResponse;
@@ -71,13 +69,13 @@ class DatabaseBackupController extends Controller
             // Create backup record
             $backup = $this->backupService->createBackup(auth()->id());
 
-            // Dispatch job to create backup asynchronously
-            CreateDatabaseBackupJob::dispatch($backup);
+            // Execute backup synchronously
+            $this->backupService->executeBackup($backup);
 
             return response()->json([
                 'success' => true,
-                'message' => 'Database backup has been queued successfully.',
-                'data' => $backup->load('creator:id,name,email'),
+                'message' => 'Database backup created successfully.',
+                'data' => $backup->fresh()->load('creator:id,name,email'),
             ], 201);
         } catch (\Exception $e) {
             return response()->json([
@@ -152,12 +150,12 @@ class DatabaseBackupController extends Controller
                 ], 400);
             }
 
-            // Dispatch restore job asynchronously
-            RestoreDatabaseBackupJob::dispatch($backup);
+            // Execute restore synchronously
+            $this->backupService->restoreFromBackup($backup);
 
             return response()->json([
                 'success' => true,
-                'message' => 'Database restore has been queued. This may take several minutes.',
+                'message' => 'Database restored successfully.',
             ]);
         } catch (\Exception $e) {
             return response()->json([

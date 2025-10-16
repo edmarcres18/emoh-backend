@@ -12,17 +12,17 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
-        // Daily database backup at midnight (using queue)
-        $schedule->command('backup:database --queue')
+        // Daily database backup at midnight (runs synchronously)
+        $schedule->command('backup:database')
                  ->dailyAt('00:00')
                  ->name('daily-database-backup')
                  ->withoutOverlapping()
                  ->runInBackground()
                  ->onSuccess(function () {
-                     \Log::info('Daily database backup scheduled successfully');
+                     \Log::info('Daily database backup completed successfully');
                  })
                  ->onFailure(function () {
-                     \Log::error('Daily database backup scheduling failed');
+                     \Log::error('Daily database backup failed');
                  });
 
         // Daily auto-trash old backups (older than 15 days) at 1:00 AM
