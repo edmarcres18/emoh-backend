@@ -55,4 +55,12 @@ class User extends Authenticatable
     {
         return $this->hasRole(['System Admin', 'Admin']);
     }
+
+    /**
+     * Check if user is a System Admin.
+     */
+    public function isSystemAdmin(): bool
+    {
+        return $this->hasRole('System Admin');
+    }
 }

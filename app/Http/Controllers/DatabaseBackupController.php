@@ -19,10 +19,10 @@ class DatabaseBackupController extends Controller
      */
     public function index(): Response
     {
-        // Only Admin and System Admin can access backup management
+        // Only System Admin can access backup management
         $currentUser = auth()->user();
-        if (!$currentUser || !$currentUser->hasAdminPrivileges()) {
-            abort(403, 'You do not have permission to access database backup management.');
+        if (!$currentUser || !$currentUser->isSystemAdmin()) {
+            abort(403, 'You do not have permission to access database backup management. System Admin role required.');
         }
 
         $backups = $this->getAvailableBackups();
@@ -39,8 +39,8 @@ class DatabaseBackupController extends Controller
     public function backup(Request $request)
     {
         $currentUser = auth()->user();
-        if (!$currentUser || !$currentUser->hasAdminPrivileges()) {
-            abort(403, 'You do not have permission to create database backups.');
+        if (!$currentUser || !$currentUser->isSystemAdmin()) {
+            abort(403, 'You do not have permission to create database backups. System Admin role required.');
         }
 
         try {
@@ -60,8 +60,8 @@ class DatabaseBackupController extends Controller
     public function download(string $filename): BinaryFileResponse
     {
         $currentUser = auth()->user();
-        if (!$currentUser || !$currentUser->hasAdminPrivileges()) {
-            abort(403, 'You do not have permission to download database backups.');
+        if (!$currentUser || !$currentUser->isSystemAdmin()) {
+            abort(403, 'You do not have permission to download database backups. System Admin role required.');
         }
 
         $backupPath = $this->getBackupStoragePath();
@@ -85,8 +85,8 @@ class DatabaseBackupController extends Controller
     public function destroy(string $filename)
     {
         $currentUser = auth()->user();
-        if (!$currentUser || !$currentUser->hasAdminPrivileges()) {
-            abort(403, 'You do not have permission to delete database backups.');
+        if (!$currentUser || !$currentUser->isSystemAdmin()) {
+            abort(403, 'You do not have permission to delete database backups. System Admin role required.');
         }
 
         $backupPath = $this->getBackupStoragePath();
@@ -113,8 +113,8 @@ class DatabaseBackupController extends Controller
     public function restore(Request $request)
     {
         $currentUser = auth()->user();
-        if (!$currentUser || !$currentUser->hasAdminPrivileges()) {
-            abort(403, 'You do not have permission to restore database backups.');
+        if (!$currentUser || !$currentUser->isSystemAdmin()) {
+            abort(403, 'You do not have permission to restore database backups. System Admin role required.');
         }
 
         $request->validate([
@@ -151,8 +151,8 @@ class DatabaseBackupController extends Controller
     public function uploadAndRestore(Request $request)
     {
         $currentUser = auth()->user();
-        if (!$currentUser || !$currentUser->hasAdminPrivileges()) {
-            abort(403, 'You do not have permission to restore database backups.');
+        if (!$currentUser || !$currentUser->isSystemAdmin()) {
+            abort(403, 'You do not have permission to restore database backups. System Admin role required.');
         }
 
         $request->validate([
