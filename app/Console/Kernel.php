@@ -12,38 +12,27 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
-        // Daily database backup at midnight (runs synchronously)
-        $schedule->command('backup:database')
-                 ->dailyAt('00:00')
+        // Daily database backup at 2:00 AM
+        $schedule->command('backup:database --cleanup --retention=30')
+                 ->dailyAt('02:00')
                  ->name('daily-database-backup')
                  ->withoutOverlapping()
                  ->runInBackground()
-                 ->onSuccess(function () {
-                     \Log::info('Daily database backup completed successfully');
-                 })
-                 ->onFailure(function () {
-                     \Log::error('Daily database backup failed');
-                 });
+                 ->emailOutputOnFailure(config('mail.admin_email', 'admin@example.com'));
 
-        // Daily auto-trash old backups (older than 15 days) at 1:00 AM
-        $schedule->command('backup:auto-trash')
-                 ->dailyAt('01:00')
-                 ->name('backup-auto-trash')
+        // Weekly cleanup of old backups (every Sunday at 3:00 AM)
+        $schedule->command('backup:cleanup --retention=30')
+                 ->weeklyOn(0, '03:00')
+                 ->name('weekly-backup-cleanup')
                  ->withoutOverlapping()
-                 ->runInBackground()
-                 ->onSuccess(function () {
-                     \Log::info('Backup auto-trash processed successfully');
-                 });
+                 ->runInBackground();
 
-        // Daily permanent deletion of old trash items (older than 7 days) at 2:00 AM
-        $schedule->command('backup:cleanup-trash')
-                 ->dailyAt('02:00')
-                 ->name('backup-cleanup-trash')
+        // Monthly deep cleanup (keep only 90 days, every 1st of month at 4:00 AM)
+        $schedule->command('backup:cleanup --retention=90')
+                 ->monthlyOn(1, '04:00')
+                 ->name('monthly-backup-cleanup')
                  ->withoutOverlapping()
-                 ->runInBackground()
-                 ->onSuccess(function () {
-                     \Log::info('Backup trash cleanup processed successfully');
-                 });
+                 ->runInBackground();
     }
 
     /**

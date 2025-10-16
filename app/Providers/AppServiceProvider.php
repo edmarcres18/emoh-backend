@@ -2,11 +2,8 @@
 
 namespace App\Providers;
 
-use App\Models\DatabaseBackup;
 use App\Models\SiteSetting;
-use App\Policies\DatabaseBackupPolicy;
 use Illuminate\Support\Facades\App;
-use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 use Inertia\Inertia;
@@ -29,7 +26,6 @@ class AppServiceProvider extends ServiceProvider
         $this->enforceHttps();
         $this->configureTrustedProxies();
         $this->shareInertiaData();
-        $this->registerPolicies();
     }
 
     /**
@@ -112,13 +108,5 @@ class AppServiceProvider extends ServiceProvider
                 'debug' => config('app.debug'),
             ],
         ]);
-    }
-
-    /**
-     * Register model policies.
-     */
-    private function registerPolicies(): void
-    {
-        Gate::policy(DatabaseBackup::class, DatabaseBackupPolicy::class);
     }
 }

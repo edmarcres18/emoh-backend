@@ -10,7 +10,6 @@ use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\ClientController;
 use App\Http\Controllers\Admin\SiteSettingsController;
 use App\Http\Controllers\Admin\RentedController;
-use App\Http\Controllers\Admin\DatabaseBackupController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -120,9 +119,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('rented/{rented}/renew', [RentedController::class, 'renew'])->name('admin.rented.renew');
         Route::post('rented/{rented}/end', [RentedController::class, 'end'])->name('admin.rented.end');
 
-        // Database Backups page and routes
-        Route::get('database-backups', [DatabaseBackupController::class, 'index'])->name('admin.database-backups.index');
-        Route::get('database-backups/{backup}/download', [DatabaseBackupController::class, 'download'])->name('admin.database-backups.download');
 
         // API routes for roles management
         Route::prefix('api')->group(function () {
@@ -170,18 +166,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::get('properties/{property}/rate', [RentedController::class, 'getPropertyRate'])->name('admin.api.properties.rate');
             Route::post('rented/validate', [RentedController::class, 'validateRental'])->name('admin.api.rented.validate');
             Route::post('properties/sync-statuses', [RentedController::class, 'syncPropertyStatuses'])->name('admin.api.properties.sync-statuses');
-
-            // API routes for database backups
-            Route::get('database-backups', [DatabaseBackupController::class, 'list'])->name('admin.api.database-backups.index');
-            Route::post('database-backups', [DatabaseBackupController::class, 'store'])->name('admin.api.database-backups.store');
-            Route::get('database-backups/statistics', [DatabaseBackupController::class, 'statistics'])->name('admin.api.database-backups.statistics');
-            Route::delete('database-backups/bulk-delete', [DatabaseBackupController::class, 'bulkDelete'])->name('admin.api.database-backups.bulk-delete');
-            Route::post('database-backups/bulk-trash', [DatabaseBackupController::class, 'bulkTrash'])->name('admin.api.database-backups.bulk-trash');
-            Route::get('database-backups/{backup}', [DatabaseBackupController::class, 'show'])->name('admin.api.database-backups.show');
-            Route::delete('database-backups/{backup}', [DatabaseBackupController::class, 'destroy'])->name('admin.api.database-backups.destroy');
-            Route::post('database-backups/{backup}/restore', [DatabaseBackupController::class, 'restore'])->name('admin.api.database-backups.restore');
-            Route::post('database-backups/{backup}/trash', [DatabaseBackupController::class, 'trash'])->name('admin.api.database-backups.trash');
-            Route::post('database-backups/{backup}/restore-from-trash', [DatabaseBackupController::class, 'restoreFromTrash'])->name('admin.api.database-backups.restore-from-trash');
         });
     });
 
