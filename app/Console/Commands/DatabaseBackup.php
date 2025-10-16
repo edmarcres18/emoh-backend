@@ -2,7 +2,7 @@
 
 namespace App\Console\Commands;
 
-use App\Http\Controllers\DatabaseBackupController;
+use App\Http\Controllers\Admin\DatabaseBackupController;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
 
