@@ -115,41 +115,85 @@ class DatabaseBackupService
             $database = config('database.default');
             $connection = config("database.connections.{$database}");
 
+            // Validate required configuration
+            if (empty($connection['database'])) {
+                throw new \Exception("Database name is not configured");
+            }
+
             // Ensure backups directory exists
             $backupDir = Storage::disk('local')->path('backups');
             if (!file_exists($backupDir)) {
-                mkdir($backupDir, 0755, true);
+                if (!mkdir($backupDir, 0755, true)) {
+                    throw new \Exception("Failed to create backup directory: {$backupDir}");
+                }
             }
 
             $backupFile = Storage::disk('local')->path($backup->path);
 
-            // Build mysqldump command
-            $command = sprintf(
-                'mysqldump --user=%s --password=%s --host=%s --port=%s %s > %s 2>&1',
-                escapeshellarg($connection['username']),
-                escapeshellarg($connection['password']),
-                escapeshellarg($connection['host']),
-                escapeshellarg($connection['port'] ?? '3306'),
-                escapeshellarg($connection['database']),
-                escapeshellarg($backupFile)
-            );
+            // Get mysqldump executable path
+            $mysqldumpPath = $this->getMysqldumpPath();
+            if (!$mysqldumpPath) {
+                throw new \Exception("mysqldump command not found. Please ensure MySQL client tools are installed.");
+            }
+
+            // Build mysqldump command with proper escaping
+            $username = $connection['username'];
+            $password = $connection['password'] ?? '';
+            $host = $connection['host'];
+            $port = $connection['port'] ?? '3306';
+            $database = $connection['database'];
+
+            // Use different command format based on OS
+            if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
+                // Windows command (Laragon uses backslashes in paths)
+                $command = sprintf(
+                    '"%s" --user=%s --password=%s --host=%s --port=%s --single-transaction --quick --lock-tables=false %s > "%s" 2>&1',
+                    $mysqldumpPath,
+                    $username,
+                    $password,
+                    $host,
+                    $port,
+                    $database,
+                    $backupFile
+                );
+            } else {
+                // Linux/Mac command with proper escaping
+                $command = sprintf(
+                    '%s --user=%s --password=%s --host=%s --port=%s --single-transaction --quick --lock-tables=false %s > %s 2>&1',
+                    escapeshellarg($mysqldumpPath),
+                    escapeshellarg($username),
+                    escapeshellarg($password),
+                    escapeshellarg($host),
+                    escapeshellarg($port),
+                    escapeshellarg($database),
+                    escapeshellarg($backupFile)
+                );
+            }
 
             // Execute backup command
             exec($command, $output, $returnCode);
 
             if ($returnCode !== 0) {
-                throw new \Exception("Backup failed with exit code {$returnCode}: " . implode("\n", $output));
+                $errorMessage = "Backup failed with exit code {$returnCode}";
+                if (!empty($output)) {
+                    $errorMessage .= ": " . implode("\n", $output);
+                }
+                throw new \Exception($errorMessage);
             }
 
             // Verify file was created and get size
             if (!file_exists($backupFile)) {
-                throw new \Exception("Backup file was not created");
+                throw new \Exception("Backup file was not created at: {$backupFile}");
             }
 
             $fileSize = filesize($backupFile);
 
+            if ($fileSize === false) {
+                throw new \Exception("Failed to get backup file size");
+            }
+
             if ($fileSize === 0) {
-                throw new \Exception("Backup file is empty");
+                throw new \Exception("Backup file is empty. Check database connection and permissions.");
             }
 
             // Update backup record
@@ -163,6 +207,13 @@ class DatabaseBackupService
             return true;
 
         } catch (\Exception $e) {
+            // Log the error for debugging
+            \Log::error('Database backup failed', [
+                'backup_id' => $backup->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
             // Update backup with error
             $backup->update([
                 'status' => 'failed',
@@ -330,5 +381,55 @@ class DatabaseBackupService
             'filename' => $backup->filename,
             'mime' => 'application/sql',
         ];
+    }
+
+    /**
+     * Get mysqldump executable path based on OS and environment.
+     */
+    private function getMysqldumpPath(): ?string
+    {
+        if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
+            // Try Laragon paths first (check multiple MySQL versions)
+            $laragonBase = 'C:\laragon\bin\mysql';
+            
+            if (is_dir($laragonBase)) {
+                $mysqlDirs = glob($laragonBase . '\*', GLOB_ONLYDIR);
+                foreach ($mysqlDirs as $dir) {
+                    $mysqldumpPath = $dir . '\bin\mysqldump.exe';
+                    if (file_exists($mysqldumpPath)) {
+                        return $mysqldumpPath;
+                    }
+                }
+            }
+            
+            // Try default Windows PATH
+            $result = shell_exec('where mysqldump 2>&1');
+            if ($result && strpos($result, 'mysqldump') !== false) {
+                return trim(explode("\n", $result)[0]);
+            }
+            
+            return null;
+        } else {
+            // Linux/Mac - use which command
+            $result = shell_exec('which mysqldump 2>&1');
+            if ($result && strpos($result, '/') !== false) {
+                return trim($result);
+            }
+            
+            // Try common paths
+            $commonPaths = [
+                '/usr/bin/mysqldump',
+                '/usr/local/bin/mysqldump',
+                '/usr/local/mysql/bin/mysqldump',
+            ];
+            
+            foreach ($commonPaths as $path) {
+                if (file_exists($path)) {
+                    return $path;
+                }
+            }
+            
+            return null;
+        }
     }
 }

@@ -78,9 +78,14 @@ class DatabaseBackupController extends Controller
                 'data' => $backup->fresh()->load('creator:id,name,email'),
             ], 201);
         } catch (\Exception $e) {
+            \Log::error('Backup creation failed in controller', [
+                'error' => $e->getMessage(),
+                'user_id' => auth()->id(),
+            ]);
+
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to create backup.',
+                'message' => 'Failed to create backup: ' . $e->getMessage(),
                 'error' => $e->getMessage(),
             ], 500);
         }
