@@ -23,6 +23,7 @@ Route::prefix('client')->group(function () {
     // Protected routes
     Route::middleware('auth:client')->group(function () {
         Route::post('/logout', [ClientAuthController::class, 'logout']);
+        Route::get('/me', [ClientAuthController::class, 'profile']); // Alias for /profile (REST convention)
         Route::get('/profile', [ClientAuthController::class, 'profile']);
         Route::put('/profile', [ClientAuthController::class, 'updateProfile']);
         Route::get('/check-active', [ClientAuthController::class, 'checkActiveStatus']);
