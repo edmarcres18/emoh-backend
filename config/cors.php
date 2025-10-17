@@ -20,15 +20,12 @@ return [
     'allowed_methods' => ['*'],
 
     'allowed_origins' => [
-        'http://localhost:3000',
-        'http://localhost:4013',
-        'http://127.0.0.1:3000',
-        'http://127.0.0.1:4013',
-        'http://192.168.1.210:4013',
+        'http://localhost:8000',
+        'http://127.0.0.1:8000',
+        'http://localhost:5173',
+        'http://127.0.0.1:5173',
+        'https://chuweydev.site',
         'https://emoh.chuweydev.site',
-        'https://www.emoh.chuweydev.site',
-        // Add your production frontend domain here
-        env('FRONTEND_URL', 'http://localhost:4013'),
     ],
 
     'allowed_origins_patterns' => [],
