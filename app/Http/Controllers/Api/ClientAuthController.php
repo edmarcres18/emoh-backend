@@ -341,6 +341,20 @@ class ClientAuthController extends Controller
             ], 422);
         }
 
+        $emailChanged = false;
+        $oldEmail = $client->email;
+
+        // Check if email is being changed
+        if ($request->email !== $client->email) {
+            $emailChanged = true;
+            
+            // Reset email verification since email changed
+            $client->email_verified_at = null;
+            
+            // Generate new OTP for email verification
+            $otp = $client->generateEmailVerificationOTP();
+        }
+
         $client->name = $request->name;
         $client->email = $request->email;
         $client->phone = $request->phone;
@@ -351,11 +365,21 @@ class ClientAuthController extends Controller
 
         $client->save();
 
+        // Send verification email if email was changed
+        if ($emailChanged) {
+            Mail::to($client->email)->queue(new ClientOTPVerification($client, $otp));
+        }
+
+        $message = $emailChanged 
+            ? 'Profile updated successfully! Please check your new email for a verification code.'
+            : 'Profile updated successfully';
+
         return response()->json([
             'success' => true,
-            'message' => 'Profile updated successfully',
+            'message' => $message,
             'data' => [
-                'client' => $this->transformClient($client)
+                'client' => $this->transformClient($client),
+                'email_changed' => $emailChanged
             ]
         ]);
     }
