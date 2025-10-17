@@ -34,6 +34,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // Apply JSON middleware to API routes
         $middleware->api(append: [
             \App\Http\Middleware\ForceJsonResponse::class,
+            \Illuminate\Http\Middleware\HandleCors::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

@@ -17,8 +17,8 @@ return [
 
     'stateful' => explode(',', env('SANCTUM_STATEFUL_DOMAINS', sprintf(
         '%s%s%s',
-        'localhost,localhost:3000,127.0.0.1,127.0.0.1:8000,::1',
-        env('APP_ENV') === 'production' ? ',admin.chuweyweb.site,www.admin.chuweyweb.site' : '',
+        'localhost,localhost:3000,localhost:4013,127.0.0.1,127.0.0.1:8000,127.0.0.1:4013,::1,192.168.1.210:4013',
+        env('APP_ENV') === 'production' ? ',admin.chuweyweb.site,www.admin.chuweyweb.site,emoh.chuweydev.site,www.emoh.chuweydev.site' : '',
         Sanctum::currentApplicationUrlWithPort(),
     ))),
 
