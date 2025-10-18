@@ -394,20 +394,6 @@ class ClientAuthController extends Controller
             ], 400);
         }
 
-        // Check if client can change email (3-month restriction)
-        if (!$client->canChangeEmail()) {
-            $daysRemaining = $client->daysUntilEmailChangeAllowed();
-            $nextAllowedDate = $client->last_email_changed_at->addMonths(3)->format('F j, Y');
-            
-            return response()->json([
-                'success' => false,
-                'message' => "For security reasons, you can only change your email once every 3 months. You can change your email again on {$nextAllowedDate}.",
-                'can_change_email' => false,
-                'days_remaining' => $daysRemaining,
-                'next_allowed_date' => $nextAllowedDate
-            ], 403);
-        }
-
         // Generate OTP for new email verification
         $otp = $client->generateEmailVerificationOTP();
         
@@ -477,11 +463,10 @@ class ClientAuthController extends Controller
         if ($client->email_verification_otp === $request->otp) {
             $oldEmail = $client->email;
             
-            // Update email, mark as verified, and record the change date
+            // Update email and mark as verified
             $client->update([
                 'email' => $request->new_email,
                 'email_verified_at' => now(),
-                'last_email_changed_at' => now(),
                 'email_verification_otp' => null,
                 'otp_expires_at' => null,
                 'otp_attempts' => 0,

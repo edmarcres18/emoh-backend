@@ -25,7 +25,6 @@ class Client extends Authenticatable
         'google_id',
         'avatar',
         'email_verified_at',
-        'last_email_changed_at',
         'is_active',
         'email_verification_otp',
         'otp_expires_at',
@@ -52,7 +51,6 @@ class Client extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
-            'last_email_changed_at' => 'datetime',
             'otp_expires_at' => 'datetime',
             'password' => 'hashed',
         ];
@@ -121,38 +119,6 @@ class Client extends Authenticatable
     public function hasExceededOTPAttempts(): bool
     {
         return $this->otp_attempts >= 5;
-    }
-
-    /**
-     * Check if client can change email (3 months restriction)
-     */
-    public function canChangeEmail(): bool
-    {
-        // If never changed email before, allow change
-        if (!$this->last_email_changed_at) {
-            return true;
-        }
-
-        // Check if 3 months (90 days) have passed since last change
-        return $this->last_email_changed_at->addMonths(3)->isPast();
-    }
-
-    /**
-     * Get the number of days remaining before email can be changed again
-     */
-    public function daysUntilEmailChangeAllowed(): int
-    {
-        if (!$this->last_email_changed_at) {
-            return 0;
-        }
-
-        $nextAllowedDate = $this->last_email_changed_at->addMonths(3);
-        
-        if ($nextAllowedDate->isPast()) {
-            return 0;
-        }
-
-        return now()->diffInDays($nextAllowedDate, false);
     }
 
     /**
