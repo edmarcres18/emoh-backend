@@ -31,6 +31,7 @@ Route::prefix('client')->group(function () {
         Route::post('/resend-otp', [ClientAuthController::class, 'resendOTP'])->middleware('throttle:10,1');
         
         // Email change routes with OTP verification
+        Route::get('/check-email-change-eligibility', [ClientAuthController::class, 'checkEmailChangeEligibility']);
         Route::post('/request-email-change', [ClientAuthController::class, 'requestEmailChange'])->middleware('throttle:5,1');
         Route::post('/verify-email-change', [ClientAuthController::class, 'verifyEmailChange'])->middleware('throttle:10,1');
     });

@@ -25,6 +25,7 @@ class Client extends Authenticatable
         'google_id',
         'avatar',
         'email_verified_at',
+        'last_email_changed_at',
         'is_active',
         'email_verification_otp',
         'otp_expires_at',
@@ -51,6 +52,7 @@ class Client extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
+            'last_email_changed_at' => 'datetime',
             'otp_expires_at' => 'datetime',
             'password' => 'hashed',
         ];
@@ -159,5 +161,49 @@ class Client extends Authenticatable
     public function getTotalRentalsAttribute(): int
     {
         return $this->rentals()->count();
+    }
+
+    /**
+     * Check if client can change email (3 months restriction)
+     * Returns true if client has never changed email or if 3 months have passed
+     */
+    public function canChangeEmail(): bool
+    {
+        // If never changed email, allow change
+        if (!$this->last_email_changed_at) {
+            return true;
+        }
+
+        // Check if 3 months have passed since last change
+        return $this->last_email_changed_at->addMonths(3)->isPast();
+    }
+
+    /**
+     * Get the date when client can change email again
+     */
+    public function getNextEmailChangeDate(): ?\Carbon\Carbon
+    {
+        if (!$this->last_email_changed_at) {
+            return null;
+        }
+
+        return $this->last_email_changed_at->addMonths(3);
+    }
+
+    /**
+     * Get days remaining until next email change is allowed
+     */
+    public function getDaysUntilEmailChange(): ?int
+    {
+        if ($this->canChangeEmail()) {
+            return 0;
+        }
+
+        $nextChangeDate = $this->getNextEmailChangeDate();
+        if (!$nextChangeDate) {
+            return null;
+        }
+
+        return max(0, now()->diffInDays($nextChangeDate, false));
     }
 }

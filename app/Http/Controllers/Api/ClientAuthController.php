@@ -360,6 +360,37 @@ class ClientAuthController extends Controller
     }
 
     /**
+     * Check if client can change email (3-month restriction check)
+     */
+    public function checkEmailChangeEligibility(Request $request): JsonResponse
+    {
+        $client = $request->user();
+
+        // Check if client account is still active
+        if (!$client->is_active) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Your account has been deactivated. Please contact support for assistance.'
+            ], 403);
+        }
+
+        $canChange = $client->canChangeEmail();
+        $nextChangeDate = $client->getNextEmailChangeDate();
+        $daysRemaining = $client->getDaysUntilEmailChange();
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'can_change_email' => $canChange,
+                'last_changed_at' => $client->last_email_changed_at,
+                'next_change_date' => $nextChangeDate,
+                'days_remaining' => $daysRemaining,
+                'restriction_period_days' => 90, // 3 months
+            ]
+        ]);
+    }
+
+    /**
      * Request email change - sends OTP to new email for verification
      */
     public function requestEmailChange(Request $request): JsonResponse
@@ -372,6 +403,23 @@ class ClientAuthController extends Controller
                 'success' => false,
                 'message' => 'Your account has been deactivated. Please contact support for assistance.'
             ], 403);
+        }
+
+        // Check 3-month restriction
+        if (!$client->canChangeEmail()) {
+            $daysRemaining = $client->getDaysUntilEmailChange();
+            $nextChangeDate = $client->getNextEmailChangeDate();
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'For security reasons, you can only change your email once every 3 months.',
+                'data' => [
+                    'can_change' => false,
+                    'days_remaining' => $daysRemaining,
+                    'next_change_date' => $nextChangeDate?->format('F d, Y'),
+                    'last_changed_at' => $client->last_email_changed_at?->format('F d, Y')
+                ]
+            ], 429); // 429 Too Many Requests
         }
 
         $validator = Validator::make($request->all(), [
@@ -463,10 +511,11 @@ class ClientAuthController extends Controller
         if ($client->email_verification_otp === $request->otp) {
             $oldEmail = $client->email;
             
-            // Update email and mark as verified
+            // Update email, mark as verified, and record the change timestamp
             $client->update([
                 'email' => $request->new_email,
                 'email_verified_at' => now(),
+                'last_email_changed_at' => now(),
                 'email_verification_otp' => null,
                 'otp_expires_at' => null,
                 'otp_attempts' => 0,
