@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Hash;
 use Laravel\Socialite\Facades\Socialite;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\ClientOTPVerification;
+use App\Mail\ClientEmailChangeVerification;
 use Illuminate\Support\Str;
 
 class ClientAuthController extends Controller
@@ -393,21 +394,23 @@ class ClientAuthController extends Controller
             ], 400);
         }
 
-        // Store the pending email change in a temporary column
+        // Store old email before generating OTP
+        $oldEmail = $client->email;
+        
         // Generate OTP for new email verification
         $otp = $client->generateEmailVerificationOTP();
         
-        // Store new email temporarily (you may want to add a 'pending_email' column to clients table)
-        // For now, we'll use the OTP system and send to the new email
-        
-        // Send verification email to NEW email address
-        Mail::to($request->new_email)->queue(new ClientOTPVerification($client, $otp));
+        // Send detailed verification email to NEW email address with all context
+        Mail::to($request->new_email)->queue(
+            new ClientEmailChangeVerification($client, $otp, $request->new_email, $oldEmail)
+        );
 
         return response()->json([
             'success' => true,
-            'message' => 'A verification code has been sent to your new email address. Please check your inbox.',
+            'message' => 'A detailed verification code has been sent to your new email address. Please check your inbox and verify within 10 minutes.',
             'data' => [
                 'new_email' => $request->new_email,
+                'old_email' => $oldEmail,
                 'expires_at' => $client->otp_expires_at
             ]
         ]);
