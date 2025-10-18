@@ -43,39 +43,6 @@
             color: #000000;
             margin-bottom: 30px;
         }
-        .email-change-info {
-            background: linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%);
-            padding: 25px;
-            border-radius: 12px;
-            margin: 25px 0;
-            border-left: 4px solid #ff8c00;
-        }
-        .email-change-info .label {
-            font-size: 13px;
-            color: #666;
-            font-weight: 500;
-            margin-bottom: 5px;
-        }
-        .email-change-info .email-value {
-            font-size: 16px;
-            color: #000000;
-            font-weight: 600;
-            margin-bottom: 15px;
-            word-break: break-all;
-        }
-        .email-change-info .old-email {
-            text-decoration: line-through;
-            color: #999;
-        }
-        .email-change-info .new-email {
-            color: #ff8c00;
-        }
-        .arrow {
-            text-align: center;
-            font-size: 24px;
-            color: #ff8c00;
-            margin: 10px 0;
-        }
         .otp-container {
             text-align: center;
             margin: 30px 0;
@@ -102,6 +69,31 @@
             margin-top: 15px;
             font-weight: 500;
         }
+        .email-change-box {
+            background-color: #fff8f0;
+            border: 2px solid #ff8c00;
+            color: #000000;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 25px 0;
+            font-size: 15px;
+        }
+        .email-change-box .old-email {
+            text-decoration: line-through;
+            color: #666;
+            font-weight: 500;
+        }
+        .email-change-box .new-email {
+            color: #ff8c00;
+            font-weight: bold;
+            font-size: 16px;
+        }
+        .email-change-box .arrow {
+            color: #ff8c00;
+            font-size: 20px;
+            font-weight: bold;
+            margin: 0 15px;
+        }
         .warning {
             background-color: #fff3e0;
             border: 2px solid #ff8c00;
@@ -113,14 +105,17 @@
             font-weight: 500;
         }
         .security-alert {
-            background-color: #ffebee;
-            border: 2px solid #f44336;
+            background-color: #ffe5e5;
+            border: 2px solid #d32f2f;
             color: #000000;
             padding: 18px;
             border-radius: 10px;
             margin: 25px 0;
             font-size: 14px;
             font-weight: 500;
+        }
+        .security-alert strong {
+            color: #d32f2f;
         }
         .info-box {
             background-color: #f5f5f5;
@@ -162,9 +157,6 @@
         .warning strong {
             color: #ff8c00;
         }
-        .security-alert strong {
-            color: #f44336;
-        }
         .info-box strong {
             color: #ff8c00;
         }
@@ -174,13 +166,6 @@
         }
         p {
             color: #000000;
-        }
-        .highlight {
-            background-color: #fff3e0;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-weight: 600;
-            color: #ff8c00;
         }
     </style>
 </head>
@@ -192,79 +177,62 @@
         </div>
 
         <div class="content">
-            <p>Hello <strong>{{ $client->name }}</strong>,</p>
+            <p>Hello {{ $client->name }},</p>
             
-            <p>We received a request to change the email address associated with your EMOH Real Estate account.</p>
+            <p>You have requested to change your email address on your EMOH Real Estate account. To complete this change, please verify your new email address using the code below:</p>
             
-            <div class="email-change-info">
-                <div class="label">📧 Current Email Address:</div>
-                <div class="email-value old-email">{{ $oldEmail }}</div>
-                
-                <div class="arrow">⬇️</div>
-                
-                <div class="label">✨ New Email Address:</div>
-                <div class="email-value new-email">{{ $newEmail }}</div>
+            <div class="email-change-box">
+                <strong>Email Address Change:</strong><br>
+                <div style="margin-top: 10px; text-align: center;">
+                    <span class="old-email">{{ $client->email }}</span>
+                    <span class="arrow">→</span>
+                    <span class="new-email">{{ $newEmail }}</span>
+                </div>
             </div>
-            
-            <p>To confirm this change and verify your new email address, please use the following <span class="highlight">6-digit verification code</span>:</p>
-            
+
             <div class="otp-container">
                 <div class="otp-code">{{ $otp }}</div>
-                <div class="otp-label">Your Email Change Verification Code</div>
+                <div class="otp-label">Your Verification Code</div>
             </div>
             
             <div class="warning">
-                <strong>⏰ Time Sensitive:</strong> This verification code will expire in <strong>10 minutes</strong> for security reasons. Please complete the verification process as soon as possible.
+                <strong>⏱️ Important:</strong> This verification code will expire in 10 minutes for security reasons.
             </div>
             
             <div class="steps">
-                <strong>📋 How to complete your email change:</strong>
+                <strong>How to verify your new email:</strong>
                 <ol>
                     <li>Return to the EMOH Real Estate app or website</li>
-                    <li>Enter the 6-digit code shown above in the verification field</li>
-                    <li>Click <strong>"Verify & Update Email"</strong> to complete the process</li>
-                    <li>Your new email address will be immediately active</li>
+                    <li>Enter the 6-digit code above in the verification field</li>
+                    <li>Click "Verify & Update Email" to complete the change</li>
                 </ol>
             </div>
             
             <div class="info-box">
-                <strong>🔒 Security Information:</strong>
-                <ul style="margin: 10px 0; padding-left: 20px;">
-                    <li>You have <strong>5 attempts</strong> to enter the correct code</li>
-                    <li>After 5 failed attempts, you'll need to request a new verification code</li>
-                    <li>Your account remains secure with your current email until verification is complete</li>
-                    <li>Once verified, your new email will be used for all future communications and login</li>
-                </ul>
+                <strong>🔒 Security Note:</strong> You have 5 attempts to enter the correct code. If you exceed this limit, you'll need to request a new verification code.
             </div>
-            
+
             <div class="security-alert">
-                <strong>⚠️ Important Security Notice:</strong> If you did <strong>NOT</strong> request this email change, please take immediate action:
-                <ul style="margin: 10px 0; padding-left: 20px;">
-                    <li><strong>Do not share</strong> this verification code with anyone</li>
-                    <li><strong>Contact our support team immediately</strong> to secure your account</li>
-                    <li><strong>Change your password</strong> as a precautionary measure</li>
-                    <li>This may indicate unauthorized access to your account</li>
-                </ul>
+                <strong>🚨 Didn't request this change?</strong><br>
+                If you did not request to change your email address, please ignore this email and your account will remain secure. We recommend changing your password immediately if you suspect unauthorized access.
             </div>
             
-            <p><strong>What happens after verification?</strong></p>
+            <p><strong>What happens next:</strong></p>
             <ul>
-                <li>✅ Your email address will be updated to: <strong style="color: #ff8c00;">{{ $newEmail }}</strong></li>
-                <li>✅ Your new email will be automatically verified</li>
+                <li>✅ Your email address will be updated to: <strong>{{ $newEmail }}</strong></li>
                 <li>✅ You'll use your new email for future logins</li>
-                <li>✅ All future notifications will be sent to your new email</li>
-                <li>✅ Your account data and preferences will remain unchanged</li>
+                <li>✅ Your account data and settings will remain unchanged</li>
+                <li>✅ You'll stay logged in on your current devices</li>
             </ul>
             
-            <p>Thank you for keeping your account information up to date with EMOH Real Estate!</p>
+            <p>If you need assistance or have concerns about this email change, please contact our support team immediately.</p>
         </div>
 
         <div class="footer">
-            <p><strong>Best regards,</strong><br>The EMOH Real Estate Team</p>
-            <p style="margin-top: 20px; font-size: 13px; color: #666;">
-                This is an automated security message. Please do not reply to this email.<br>
-                If you need assistance, please contact our support team.<br>
-                <strong>Request Time:</strong> {{ now()->format('M d, Y - h:i A') }}
+            <p>Best regards,<br>The EMOH Real Estate Team</p>
+            <p style="margin-top: 20px;">
+                This is an automated message. Please do not reply to this email.<br>
+                If you need assistance, please contact our support team.
             </p>
         </div>
     </div>

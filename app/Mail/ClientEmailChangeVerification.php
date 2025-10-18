@@ -16,17 +16,15 @@ class ClientEmailChangeVerification extends Mailable
     public $client;
     public $otp;
     public $newEmail;
-    public $oldEmail;
 
     /**
      * Create a new message instance.
      */
-    public function __construct(Client $client, string $otp, string $newEmail, string $oldEmail)
+    public function __construct(Client $client, string $otp, string $newEmail)
     {
         $this->client = $client;
         $this->otp = $otp;
         $this->newEmail = $newEmail;
-        $this->oldEmail = $oldEmail;
     }
 
     /**
@@ -50,7 +48,6 @@ class ClientEmailChangeVerification extends Mailable
                 'client' => $this->client,
                 'otp' => $this->otp,
                 'newEmail' => $this->newEmail,
-                'oldEmail' => $this->oldEmail,
             ],
         );
     }

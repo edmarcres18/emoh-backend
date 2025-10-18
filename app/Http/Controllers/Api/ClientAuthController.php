@@ -73,9 +73,9 @@ class ClientAuthController extends Controller
             'is_active' => true, // New clients are active by default
         ]);
 
-        // Generate and queue OTP for email verification
+        // Generate and send OTP for email verification (real-time)
         $otp = $client->generateEmailVerificationOTP();
-        Mail::to($client->email)->queue(new ClientOTPVerification($client, $otp));
+        Mail::to($client->email)->send(new ClientOTPVerification($client, $otp));
 
         $token = $client->createToken($this->resolveTokenName($request))->plainTextToken;
 
@@ -276,9 +276,9 @@ class ClientAuthController extends Controller
             ], 400);
         }
 
-        // Generate new OTP and queue email
+        // Generate new OTP and send email (real-time)
         $otp = $client->generateEmailVerificationOTP();
-        Mail::to($client->email)->queue(new ClientOTPVerification($client, $otp));
+        Mail::to($client->email)->send(new ClientOTPVerification($client, $otp));
 
         return response()->json([
             'success' => true,
@@ -394,23 +394,17 @@ class ClientAuthController extends Controller
             ], 400);
         }
 
-        // Store old email before generating OTP
-        $oldEmail = $client->email;
-        
         // Generate OTP for new email verification
         $otp = $client->generateEmailVerificationOTP();
         
-        // Send detailed verification email to NEW email address with all context
-        Mail::to($request->new_email)->queue(
-            new ClientEmailChangeVerification($client, $otp, $request->new_email, $oldEmail)
-        );
+        // Send verification email to NEW email address (real-time, no queue)
+        Mail::to($request->new_email)->send(new ClientEmailChangeVerification($client, $otp, $request->new_email));
 
         return response()->json([
             'success' => true,
-            'message' => 'A detailed verification code has been sent to your new email address. Please check your inbox and verify within 10 minutes.',
+            'message' => 'A verification code has been sent to your new email address. Please check your inbox.',
             'data' => [
                 'new_email' => $request->new_email,
-                'old_email' => $oldEmail,
                 'expires_at' => $client->otp_expires_at
             ]
         ]);
