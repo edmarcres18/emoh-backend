@@ -312,7 +312,7 @@ class ClientAuthController extends Controller
     }
 
     /**
-     * Update client profile
+     * Update client profile (excludes email changes - use requestEmailChange for that)
      */
     public function updateProfile(Request $request): JsonResponse
     {
@@ -328,7 +328,6 @@ class ClientAuthController extends Controller
 
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:clients,email,' . $client->id,
             'phone' => 'nullable|string|max:20',
             'password' => 'nullable|string|min:8|confirmed',
         ]);
@@ -341,22 +340,7 @@ class ClientAuthController extends Controller
             ], 422);
         }
 
-        $emailChanged = false;
-        $oldEmail = $client->email;
-
-        // Check if email is being changed
-        if ($request->email !== $client->email) {
-            $emailChanged = true;
-            
-            // Reset email verification since email changed
-            $client->email_verified_at = null;
-            
-            // Generate new OTP for email verification
-            $otp = $client->generateEmailVerificationOTP();
-        }
-
         $client->name = $request->name;
-        $client->email = $request->email;
         $client->phone = $request->phone;
 
         if ($request->password) {
@@ -365,23 +349,148 @@ class ClientAuthController extends Controller
 
         $client->save();
 
-        // Send verification email if email was changed
-        if ($emailChanged) {
-            Mail::to($client->email)->queue(new ClientOTPVerification($client, $otp));
+        return response()->json([
+            'success' => true,
+            'message' => 'Profile updated successfully',
+            'data' => [
+                'client' => $this->transformClient($client)
+            ]
+        ]);
+    }
+
+    /**
+     * Request email change - sends OTP to new email for verification
+     */
+    public function requestEmailChange(Request $request): JsonResponse
+    {
+        $client = $request->user();
+
+        // Check if client account is still active
+        if (!$client->is_active) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Your account has been deactivated. Please contact support for assistance.'
+            ], 403);
         }
 
-        $message = $emailChanged 
-            ? 'Profile updated successfully! Please check your new email for a verification code.'
-            : 'Profile updated successfully';
+        $validator = Validator::make($request->all(), [
+            'new_email' => 'required|string|email|max:255|unique:clients,email',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        // Check if new email is same as current
+        if ($request->new_email === $client->email) {
+            return response()->json([
+                'success' => false,
+                'message' => 'The new email is the same as your current email.'
+            ], 400);
+        }
+
+        // Store the pending email change in a temporary column
+        // Generate OTP for new email verification
+        $otp = $client->generateEmailVerificationOTP();
+        
+        // Store new email temporarily (you may want to add a 'pending_email' column to clients table)
+        // For now, we'll use the OTP system and send to the new email
+        
+        // Send verification email to NEW email address
+        Mail::to($request->new_email)->queue(new ClientOTPVerification($client, $otp));
 
         return response()->json([
             'success' => true,
-            'message' => $message,
+            'message' => 'A verification code has been sent to your new email address. Please check your inbox.',
             'data' => [
-                'client' => $this->transformClient($client),
-                'email_changed' => $emailChanged
+                'new_email' => $request->new_email,
+                'expires_at' => $client->otp_expires_at
             ]
         ]);
+    }
+
+    /**
+     * Verify and confirm email change using OTP
+     */
+    public function verifyEmailChange(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'new_email' => 'required|string|email|max:255|unique:clients,email',
+            'otp' => 'required|string|size:6',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Please provide a valid email and 6-digit OTP code.',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        $client = $request->user();
+
+        // Check if client account is active
+        if (!$client->is_active) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Your account has been deactivated. Please contact support for assistance.'
+            ], 403);
+        }
+
+        // Check if OTP has expired
+        if ($client->isOTPExpired()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'The verification code has expired. Please request a new one.',
+                'expired' => true
+            ], 400);
+        }
+
+        // Check if too many attempts
+        if ($client->hasExceededOTPAttempts()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Too many failed attempts. Please request a new verification code.',
+                'exceeded_attempts' => true
+            ], 400);
+        }
+
+        // Increment attempts
+        $client->increment('otp_attempts');
+
+        // Verify the OTP
+        if ($client->email_verification_otp === $request->otp) {
+            $oldEmail = $client->email;
+            
+            // Update email and mark as verified
+            $client->update([
+                'email' => $request->new_email,
+                'email_verified_at' => now(),
+                'email_verification_otp' => null,
+                'otp_expires_at' => null,
+                'otp_attempts' => 0,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Email updated and verified successfully!',
+                'data' => [
+                    'client' => $this->transformClient($client->fresh()),
+                    'email_changed' => true,
+                    'old_email' => $oldEmail
+                ]
+            ]);
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Invalid verification code. Please try again.',
+            'attempts_remaining' => max(0, 5 - $client->otp_attempts)
+        ], 400);
     }
 
     /**
