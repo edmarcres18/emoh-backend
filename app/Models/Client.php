@@ -30,6 +30,12 @@ class Client extends Authenticatable
         'email_verification_otp',
         'otp_expires_at',
         'otp_attempts',
+        'failed_login_attempts',
+        'last_failed_login_at',
+        'locked_until',
+        'last_login_ip',
+        'browser_fingerprint',
+        'last_successful_login_at',
     ];
 
     /**
@@ -54,6 +60,9 @@ class Client extends Authenticatable
             'email_verified_at' => 'datetime',
             'last_email_changed_at' => 'datetime',
             'otp_expires_at' => 'datetime',
+            'last_failed_login_at' => 'datetime',
+            'locked_until' => 'datetime',
+            'last_successful_login_at' => 'datetime',
             'password' => 'hashed',
         ];
     }
@@ -205,5 +214,76 @@ class Client extends Authenticatable
         }
 
         return max(0, now()->diffInDays($nextChangeDate, false));
+    }
+
+    /**
+     * Check if account is locked due to failed login attempts
+     */
+    public function isLocked(): bool
+    {
+        if (!$this->locked_until) {
+            return false;
+        }
+
+        if ($this->locked_until->isPast()) {
+            // Lock expired, reset failed attempts
+            $this->update([
+                'failed_login_attempts' => 0,
+                'locked_until' => null,
+            ]);
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Record failed login attempt
+     */
+    public function recordFailedLogin(): void
+    {
+        $attempts = $this->failed_login_attempts + 1;
+        $data = [
+            'failed_login_attempts' => $attempts,
+            'last_failed_login_at' => now(),
+        ];
+
+        // Lock account after 5 failed attempts for 15 minutes
+        if ($attempts >= 5) {
+            $data['locked_until'] = now()->addMinutes(15);
+        }
+
+        $this->update($data);
+    }
+
+    /**
+     * Record successful login
+     */
+    public function recordSuccessfulLogin(string $ip, ?string $fingerprint = null): void
+    {
+        $this->update([
+            'failed_login_attempts' => 0,
+            'last_failed_login_at' => null,
+            'locked_until' => null,
+            'last_login_ip' => $ip,
+            'browser_fingerprint' => $fingerprint,
+            'last_successful_login_at' => now(),
+        ]);
+    }
+
+    /**
+     * Get minutes remaining until account unlocks
+     */
+    public function getMinutesUntilUnlock(): ?int
+    {
+        if (!$this->locked_until) {
+            return null;
+        }
+
+        if ($this->locked_until->isPast()) {
+            return 0;
+        }
+
+        return max(0, now()->diffInMinutes($this->locked_until, false));
     }
 }

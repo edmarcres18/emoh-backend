@@ -91,13 +91,14 @@ class ClientAuthController extends Controller
     }
 
     /**
-     * Login client
+     * Login client with enhanced security
      */
     public function login(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
             'email' => 'required|email',
             'password' => 'required|string',
+            'fingerprint' => 'nullable|string|max:100', // Browser fingerprint
         ]);
 
         if ($validator->fails()) {
@@ -110,7 +111,39 @@ class ClientAuthController extends Controller
 
         $client = Client::where('email', $request->email)->first();
 
+        // Check if account exists and is locked
+        if ($client && $client->isLocked()) {
+            $minutesRemaining = $client->getMinutesUntilUnlock();
+            return response()->json([
+                'success' => false,
+                'message' => 'Account temporarily locked due to multiple failed login attempts.',
+                'data' => [
+                    'locked' => true,
+                    'minutes_remaining' => $minutesRemaining,
+                    'unlock_at' => $client->locked_until?->format('Y-m-d H:i:s')
+                ]
+            ], 423); // 423 Locked
+        }
+
+        // Validate credentials
         if (!$client || !Hash::check($request->password, $client->password)) {
+            // Record failed attempt if client exists
+            if ($client) {
+                $client->recordFailedLogin();
+                
+                $attemptsRemaining = max(0, 5 - $client->failed_login_attempts);
+                
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid credentials',
+                    'data' => [
+                        'attempts_remaining' => $attemptsRemaining,
+                        'warning' => $attemptsRemaining <= 2 ? 'Account will be locked after ' . $attemptsRemaining . ' more failed attempt(s)' : null
+                    ]
+                ], 401);
+            }
+            
+            // Generic error for non-existent accounts (prevent user enumeration)
             return response()->json([
                 'success' => false,
                 'message' => 'Invalid credentials'
@@ -124,6 +157,13 @@ class ClientAuthController extends Controller
                 'message' => 'Your account has been deactivated. Please contact support for assistance.'
             ], 403);
         }
+
+        // Get client IP
+        $ip = $request->ip();
+        $fingerprint = $request->input('fingerprint');
+
+        // Record successful login
+        $client->recordSuccessfulLogin($ip, $fingerprint);
 
         $token = $client->createToken($this->resolveTokenName($request))->plainTextToken;
 
