@@ -24,8 +24,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        $this->enforceHttps();
+        // Configure trusted proxies FIRST so HTTPS detection works properly
         $this->configureTrustedProxies();
+        $this->enforceHttps();
         $this->shareInertiaData();
     }
 
@@ -39,19 +40,26 @@ class AppServiceProvider extends ServiceProvider
      */
     private function enforceHttps(): void
     {
+        // Check if request is secure (after proxies are configured)
+        $isSecure = request()->isSecure() || request()->header('X-Forwarded-Proto') === 'https';
+        
         // Check if HTTPS should be forced via environment variable or production environment
         $forceHttps = config('app.force_https', false) || App::environment('production');
         
-        if ($forceHttps) {
+        if ($forceHttps || $isSecure) {
             // Force HTTPS for all URL generation
             URL::forceScheme('https');
+            
+            // Also update the APP_URL config to use HTTPS
+            $appUrl = config('app.url');
+            if ($appUrl && !str_starts_with($appUrl, 'https://')) {
+                config(['app.url' => preg_replace('/^http:/', 'https:', $appUrl)]);
+            }
 
             // Ensure secure cookies when using HTTPS
-            if (request()->isSecure() || request()->header('X-Forwarded-Proto') === 'https') {
-                config(['session.secure' => true]);
-                // Use 'lax' for better compatibility, 'none' only if needed for cross-site
-                config(['session.same_site' => config('session.same_site', 'lax')]);
-            }
+            config(['session.secure' => true]);
+            // Use 'lax' for better compatibility, 'none' only if needed for cross-site
+            config(['session.same_site' => config('session.same_site', 'lax')]);
         } else {
             // In non-production environments, use the scheme from APP_URL
             $appUrl = config('app.url');
