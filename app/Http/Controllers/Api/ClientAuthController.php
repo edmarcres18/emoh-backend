@@ -130,9 +130,9 @@ class ClientAuthController extends Controller
             // Record failed attempt if client exists
             if ($client) {
                 $client->recordFailedLogin();
-                
+
                 $attemptsRemaining = max(0, 5 - $client->failed_login_attempts);
-                
+
                 return response()->json([
                     'success' => false,
                     'message' => 'Invalid credentials',
@@ -142,7 +142,7 @@ class ClientAuthController extends Controller
                     ]
                 ], 401);
             }
-            
+
             // Generic error for non-existent accounts (prevent user enumeration)
             return response()->json([
                 'success' => false,
@@ -449,7 +449,7 @@ class ClientAuthController extends Controller
         if (!$client->canChangeEmail()) {
             $daysRemaining = $client->getDaysUntilEmailChange();
             $nextChangeDate = $client->getNextEmailChangeDate();
-            
+
             return response()->json([
                 'success' => false,
                 'message' => 'For security reasons, you can only change your email once every 3 months.',
@@ -484,7 +484,7 @@ class ClientAuthController extends Controller
 
         // Generate OTP for new email verification
         $otp = $client->generateEmailVerificationOTP();
-        
+
         // Send verification email to NEW email address (real-time, no queue)
         Mail::to($request->new_email)->send(new ClientEmailChangeVerification($client, $otp, $request->new_email));
 
@@ -550,7 +550,7 @@ class ClientAuthController extends Controller
         // Verify the OTP
         if ($client->email_verification_otp === $request->otp) {
             $oldEmail = $client->email;
-            
+
             // Update email, mark as verified, and record the change timestamp
             $client->update([
                 'email' => $request->new_email,

@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Admin\SiteSettingsController;
 use App\Http\Controllers\Api\ClientAuthController;
 use App\Http\Controllers\Api\PropertyApiController;
+use App\Http\Controllers\Api\ClientRentalController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -34,6 +35,12 @@ Route::prefix('client')->group(function () {
         Route::get('/check-email-change-eligibility', [ClientAuthController::class, 'checkEmailChangeEligibility']);
         Route::post('/request-email-change', [ClientAuthController::class, 'requestEmailChange'])->middleware('throttle:5,1');
         Route::post('/verify-email-change', [ClientAuthController::class, 'verifyEmailChange'])->middleware('throttle:10,1');
+
+        // Client Rental Routes - View their rental properties
+        Route::get('/my-rentals', [ClientRentalController::class, 'getMyRentals']);
+        Route::get('/my-rentals/{rentalId}', [ClientRentalController::class, 'getRentalDetail']);
+        Route::get('/active-rentals', [ClientRentalController::class, 'getActiveRentals']);
+        Route::get('/rental-history', [ClientRentalController::class, 'getRentalHistory']);
     });
 });
 
