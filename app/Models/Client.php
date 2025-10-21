@@ -157,6 +157,22 @@ class Client extends Authenticatable
     }
 
     /**
+     * Get the chatbot conversations for the client.
+     */
+    public function conversations(): HasMany
+    {
+        return $this->hasMany(ClientConversation::class);
+    }
+
+    /**
+     * Get the active chatbot conversations for the client.
+     */
+    public function activeConversations(): HasMany
+    {
+        return $this->hasMany(ClientConversation::class)->where('status', 'active');
+    }
+
+    /**
      * Check if the client has any active rentals.
      */
     public function hasActiveRentals(): bool

@@ -41,4 +41,13 @@ return [
         'redirect' => env('GOOGLE_REDIRECT_URI'),
     ],
 
+    'openrouter' => [
+        'api_key' => env('OPENROUTER_API_KEY'),
+        'base_url' => env('OPENROUTER_BASE_URL', 'https://openrouter.ai/api/v1'),
+        'model' => env('OPENROUTER_MODEL', 'deepseek/deepseek-chat-v3.1:free'),
+        'max_tokens' => env('CHATBOT_MAX_TOKENS', 2000),
+        'temperature' => env('CHATBOT_TEMPERATURE', 0.7),
+        'max_context_messages' => env('CHATBOT_MAX_CONTEXT_MESSAGES', 10),
+    ],
+
 ];
