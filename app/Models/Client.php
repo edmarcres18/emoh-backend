@@ -157,6 +157,14 @@ class Client extends Authenticatable
     }
 
     /**
+     * Get all conversations for the client.
+     */
+    public function conversations(): HasMany
+    {
+        return $this->hasMany(Conversation::class);
+    }
+
+    /**
      * Check if the client has any active rentals.
      */
     public function hasActiveRentals(): bool
