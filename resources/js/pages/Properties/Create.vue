@@ -129,6 +129,8 @@ const removeImage = (index: number) => {
                                 id="property_name"
                                 v-model="form.property_name"
                                 type="text"
+                                name="property_name"
+                                autocomplete="off"
                                 placeholder="Enter property name..."
                                 :class="[
                                     'block w-full px-4 py-3 border rounded-lg shadow-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500',
@@ -149,7 +151,7 @@ const removeImage = (index: number) => {
 
                         <!-- Category -->
                         <div>
-                            <label for="category_id" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                            <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
                                 Category <span class="text-red-500">*</span>
                             </label>
                             <SearchableSelect
@@ -160,6 +162,7 @@ const removeImage = (index: number) => {
                                 placeholder="Select a category..."
                                 :error="form.errors.category_id"
                                 :disabled="isSubmitting"
+                                name="category_id"
                             />
                             <div v-if="form.errors.category_id" class="mt-2 flex items-center gap-2 text-sm text-red-600 dark:text-red-400">
                                 <svg class="h-4 w-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -171,7 +174,7 @@ const removeImage = (index: number) => {
 
                         <!-- Location -->
                         <div>
-                            <label for="location_id" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                            <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
                                 Location <span class="text-red-500">*</span>
                             </label>
                             <SearchableSelect
@@ -182,6 +185,7 @@ const removeImage = (index: number) => {
                                 placeholder="Select a location..."
                                 :error="form.errors.location_id"
                                 :disabled="isSubmitting"
+                                name="location_id"
                             />
                             <div v-if="form.errors.location_id" class="mt-2 flex items-center gap-2 text-sm text-red-600 dark:text-red-400">
                                 <svg class="h-4 w-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -203,6 +207,7 @@ const removeImage = (index: number) => {
                                 id="estimated_monthly"
                                 v-model="form.estimated_monthly"
                                 type="number"
+                                name="estimated_monthly"
                                 step="0.01"
                                 min="0"
                                 placeholder="0.00"
@@ -231,6 +236,7 @@ const removeImage = (index: number) => {
                                 id="lot_area"
                                 v-model="form.lot_area"
                                 type="number"
+                                name="lot_area"
                                 step="0.01"
                                 min="0"
                                 placeholder="0.00"
@@ -259,6 +265,7 @@ const removeImage = (index: number) => {
                                 id="floor_area"
                                 v-model="form.floor_area"
                                 type="number"
+                                name="floor_area"
                                 step="0.01"
                                 min="0"
                                 placeholder="0.00"
@@ -283,7 +290,7 @@ const removeImage = (index: number) => {
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <!-- Status -->
                         <div>
-                            <label for="status" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                            <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
                                 Status <span class="text-red-500">*</span>
                             </label>
                             <SearchableSelect
@@ -294,6 +301,7 @@ const removeImage = (index: number) => {
                                 placeholder="Select status..."
                                 :error="form.errors.status"
                                 :disabled="isSubmitting"
+                                name="status"
                             />
                             <div v-if="form.errors.status" class="mt-2 flex items-center gap-2 text-sm text-red-600 dark:text-red-400">
                                 <svg class="h-4 w-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -334,6 +342,7 @@ const removeImage = (index: number) => {
                         <textarea
                             id="details"
                             v-model="form.details"
+                            name="details"
                             rows="4"
                             placeholder="Enter property details, lease terms, amenities, etc..."
                             :class="[
@@ -365,7 +374,7 @@ const removeImage = (index: number) => {
                                 <div class="flex text-sm text-gray-600 dark:text-gray-400">
                                     <label for="images" class="relative cursor-pointer bg-white dark:bg-gray-800 rounded-md font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500">
                                         <span>Upload images</span>
-                                        <input id="images" type="file" class="sr-only" multiple accept="image/*" @change="handleImageUpload" :disabled="isSubmitting">
+                                        <input id="images" name="images" type="file" class="sr-only" multiple accept="image/*" @change="handleImageUpload" :disabled="isSubmitting">
                                     </label>
                                     <p class="pl-1">or drag and drop</p>
                                 </div>

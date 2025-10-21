@@ -4,9 +4,11 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Property;
+use App\Models\Rented;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\DB;
 
 class PropertyApiController extends Controller
 {
@@ -266,6 +268,200 @@ class PropertyApiController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to retrieve available statuses',
+                'error' => config('app.debug') ? $e->getMessage() : 'Internal server error'
+            ], 500);
+        }
+    }
+
+    /**
+     * Get client's rented properties (existing and recent)
+     * 
+     * This endpoint allows authenticated clients to view all their rental properties
+     * including active rentals and rental history with comprehensive filtering and pagination.
+     * 
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function getClientRentedProperties(Request $request): JsonResponse
+    {
+        try {
+            // Get authenticated client
+            $client = $request->user();
+
+            // Check if client account is active
+            if (!$client || !$client->is_active) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Your account has been deactivated. Please contact support for assistance.'
+                ], 403);
+            }
+
+            // Validate request parameters
+            $validator = Validator::make($request->all(), [
+                'status' => 'nullable|string|in:active,pending,expired,terminated,ended,all',
+                'per_page' => 'nullable|integer|min:1|max:100',
+                'page' => 'nullable|integer|min:1',
+                'search' => 'nullable|string|max:255',
+                'sort_by' => 'nullable|string|in:start_date,end_date,monthly_rent,created_at,property_name',
+                'sort_order' => 'nullable|string|in:asc,desc',
+                'date_from' => 'nullable|date',
+                'date_to' => 'nullable|date|after_or_equal:date_from',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validation failed',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            // Get request parameters with defaults
+            $status = $request->get('status', 'all');
+            $perPage = $request->get('per_page', 15);
+            $search = $request->get('search');
+            $sortBy = $request->get('sort_by', 'created_at');
+            $sortOrder = $request->get('sort_order', 'desc');
+            $dateFrom = $request->get('date_from');
+            $dateTo = $request->get('date_to');
+
+            // Build query with eager loading for performance
+            $query = Rented::with([
+                'property' => function ($query) {
+                    $query->select('id', 'property_name', 'estimated_monthly', 'images', 'details', 'status', 'category_id', 'location_id', 'lot_area', 'floor_area');
+                },
+                'property.category' => function ($query) {
+                    $query->select('id', 'category_name', 'description');
+                },
+                'property.location' => function ($query) {
+                    $query->select('id', 'location_name', 'location_address');
+                }
+            ])
+            ->where('client_id', $client->id);
+
+            // Apply status filter
+            if ($status !== 'all') {
+                $query->where('status', $status);
+            }
+
+            // Apply search filter (search in property name, notes, terms)
+            if ($search) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('notes', 'like', "%{$search}%")
+                      ->orWhere('terms_conditions', 'like', "%{$search}%")
+                      ->orWhereHas('property', function ($propertyQuery) use ($search) {
+                          $propertyQuery->where('property_name', 'like', "%{$search}%")
+                                       ->orWhere('details', 'like', "%{$search}%");
+                      });
+                });
+            }
+
+            // Apply date range filter
+            if ($dateFrom) {
+                $query->where('start_date', '>=', $dateFrom);
+            }
+
+            if ($dateTo) {
+                $query->where('start_date', '<=', $dateTo);
+            }
+
+            // Apply sorting
+            if ($sortBy === 'property_name') {
+                // Join with properties table for sorting by property name
+                $query->join('properties', 'rented.property_id', '=', 'properties.id')
+                      ->select('rented.*')
+                      ->orderBy('properties.property_name', $sortOrder);
+            } else {
+                $query->orderBy($sortBy, $sortOrder);
+            }
+
+            // Execute query with pagination
+            $rentals = $query->paginate($perPage);
+
+            // Transform rental data for response
+            $transformedRentals = $rentals->map(function ($rental) {
+                return [
+                    'id' => $rental->id,
+                    'property' => [
+                        'id' => $rental->property->id ?? null,
+                        'name' => $rental->property->property_name ?? 'N/A',
+                        'estimated_monthly' => $rental->property->estimated_monthly ?? null,
+                        'images' => $rental->property->images ?? [],
+                        'details' => $rental->property->details ?? null,
+                        'status' => $rental->property->status ?? null,
+                        'lot_area' => $rental->property->lot_area ?? null,
+                        'floor_area' => $rental->property->floor_area ?? null,
+                        'category' => [
+                            'id' => $rental->property->category->id ?? null,
+                            'name' => $rental->property->category->category_name ?? null,
+                            'description' => $rental->property->category->description ?? null,
+                        ],
+                        'location' => [
+                            'id' => $rental->property->location->id ?? null,
+                            'name' => $rental->property->location->location_name ?? null,
+                            'address' => $rental->property->location->location_address ?? null,
+                        ],
+                    ],
+                    'rental_details' => [
+                        'monthly_rent' => (float) $rental->monthly_rent,
+                        'formatted_monthly_rent' => $rental->formatted_monthly_rent,
+                        'security_deposit' => $rental->security_deposit ? (float) $rental->security_deposit : null,
+                        'formatted_security_deposit' => $rental->formatted_security_deposit,
+                        'start_date' => $rental->start_date?->format('Y-m-d'),
+                        'end_date' => $rental->end_date?->format('Y-m-d'),
+                        'status' => $rental->status,
+                        'remarks' => $rental->remarks,
+                        'is_active' => $rental->isActive(),
+                        'is_expired' => $rental->isExpired(),
+                        'remaining_days' => $rental->remaining_days,
+                        'total_duration_days' => $rental->total_duration,
+                        'contract_signed_at' => $rental->contract_signed_at?->format('Y-m-d H:i:s'),
+                    ],
+                    'terms_conditions' => $rental->terms_conditions,
+                    'notes' => $rental->notes,
+                    'documents' => $rental->documents ?? [],
+                    'created_at' => $rental->created_at->format('Y-m-d H:i:s'),
+                    'updated_at' => $rental->updated_at->format('Y-m-d H:i:s'),
+                ];
+            });
+
+            // Get rental statistics for the client
+            $stats = [
+                'total_rentals' => $client->rentals()->count(),
+                'active_rentals' => $client->activeRentals()->count(),
+                'pending_rentals' => $client->rentals()->where('status', 'pending')->count(),
+                'expired_rentals' => $client->rentals()->whereIn('status', ['expired', 'ended'])->count(),
+                'terminated_rentals' => $client->rentals()->where('status', 'terminated')->count(),
+            ];
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Rented properties retrieved successfully',
+                'data' => [
+                    'rentals' => $transformedRentals,
+                    'statistics' => $stats,
+                    'pagination' => [
+                        'current_page' => $rentals->currentPage(),
+                        'per_page' => $rentals->perPage(),
+                        'total' => $rentals->total(),
+                        'last_page' => $rentals->lastPage(),
+                        'from' => $rentals->firstItem(),
+                        'to' => $rentals->lastItem(),
+                    ]
+                ]
+            ], 200);
+
+        } catch (\Exception $e) {
+            // Log the error for debugging in production
+            \Log::error('Failed to retrieve client rented properties', [
+                'client_id' => $request->user()?->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve rented properties',
                 'error' => config('app.debug') ? $e->getMessage() : 'Internal server error'
             ], 500);
         }

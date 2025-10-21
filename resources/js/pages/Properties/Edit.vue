@@ -135,6 +135,8 @@ const formatDate = (dateString: string) => {
                                 id="property_name"
                                 v-model="form.property_name"
                                 type="text"
+                                name="property_name"
+                                autocomplete="off"
                                 placeholder="Enter property name..."
                                 :class="[
                                     'block w-full px-4 py-3 border rounded-lg shadow-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500',
@@ -155,7 +157,7 @@ const formatDate = (dateString: string) => {
 
                         <!-- Category -->
                         <div>
-                            <label for="category_id" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                            <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
                                 Category <span class="text-red-500">*</span>
                             </label>
                             <SearchableSelect
@@ -166,12 +168,13 @@ const formatDate = (dateString: string) => {
                                 placeholder="Select a category..."
                                 :error="form.errors.category_id"
                                 :disabled="isSubmitting"
+                                name="category_id"
                             />
                         </div>
 
                         <!-- Location -->
                         <div>
-                            <label for="location_id" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                            <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
                                 Location <span class="text-red-500">*</span>
                             </label>
                             <SearchableSelect
@@ -182,6 +185,7 @@ const formatDate = (dateString: string) => {
                                 placeholder="Select a location..."
                                 :error="form.errors.location_id"
                                 :disabled="isSubmitting"
+                                name="location_id"
                             />
                         </div>
                     </div>
@@ -196,6 +200,7 @@ const formatDate = (dateString: string) => {
                                 id="estimated_monthly"
                                 v-model="form.estimated_monthly"
                                 type="number"
+                                name="estimated_monthly"
                                 step="0.01"
                                 min="0"
                                 placeholder="0.00"
@@ -212,6 +217,7 @@ const formatDate = (dateString: string) => {
                                 id="lot_area"
                                 v-model="form.lot_area"
                                 type="number"
+                                name="lot_area"
                                 step="0.01"
                                 min="0"
                                 placeholder="0.00"
@@ -228,6 +234,7 @@ const formatDate = (dateString: string) => {
                                 id="floor_area"
                                 v-model="form.floor_area"
                                 type="number"
+                                name="floor_area"
                                 step="0.01"
                                 min="0"
                                 placeholder="0.00"
@@ -241,7 +248,7 @@ const formatDate = (dateString: string) => {
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <!-- Status -->
                         <div>
-                            <label for="status" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                            <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
                                 Status <span class="text-red-500">*</span>
                             </label>
                             <SearchableSelect
@@ -252,6 +259,7 @@ const formatDate = (dateString: string) => {
                                 placeholder="Select status..."
                                 :error="form.errors.status"
                                 :disabled="isSubmitting"
+                                name="status"
                             />
                         </div>
 
@@ -264,6 +272,7 @@ const formatDate = (dateString: string) => {
                                     id="is_featured"
                                     v-model="form.is_featured"
                                     type="checkbox"
+                                    name="is_featured"
                                     class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 dark:border-gray-600 rounded"
                                     :disabled="isSubmitting"
                                 />
@@ -282,6 +291,7 @@ const formatDate = (dateString: string) => {
                         <textarea
                             id="details"
                             v-model="form.details"
+                            name="details"
                             rows="4"
                             placeholder="Enter property details, lease terms, amenities, etc..."
                             class="block w-full px-4 py-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
@@ -316,6 +326,7 @@ const formatDate = (dateString: string) => {
                                 id="replace_images"
                                 v-model="form.replace_images"
                                 type="checkbox"
+                                name="replace_images"
                                 class="h-4 w-4 text-amber-600 focus:ring-amber-500 border-amber-300 dark:border-amber-600 rounded"
                             />
                             <label for="replace_images" class="ml-3 block text-sm text-amber-800 dark:text-amber-200">
@@ -338,7 +349,7 @@ const formatDate = (dateString: string) => {
                                 <div class="flex text-sm text-gray-600 dark:text-gray-400">
                                     <label for="images" class="relative cursor-pointer bg-white dark:bg-gray-800 rounded-md font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-500">
                                         <span>Upload images</span>
-                                        <input id="images" type="file" class="sr-only" multiple accept="image/*" @change="handleImageUpload" :disabled="isSubmitting">
+                                        <input id="images" name="images" type="file" class="sr-only" multiple accept="image/*" @change="handleImageUpload" :disabled="isSubmitting">
                                     </label>
                                     <p class="pl-1">or drag and drop</p>
                                 </div>
