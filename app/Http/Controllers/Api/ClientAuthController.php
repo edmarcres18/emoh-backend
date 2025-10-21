@@ -766,7 +766,7 @@ class ClientAuthController extends Controller
 
             // Special handling for property_name sorting
             if ($sortBy === 'property_name') {
-                $query->join('properties', 'rented.property_id', '=', 'properties.id')
+                $query->leftJoin('properties', 'rented.property_id', '=', 'properties.id')
                       ->select('rented.*')
                       ->orderBy('properties.property_name', $sortOrder);
             } else {
@@ -793,56 +793,64 @@ class ClientAuthController extends Controller
 
             // Transform rentals to match frontend expectations
             $transformedRentals = $rentals->getCollection()->map(function ($rental) {
+                // Safely access property and its relationships
+                $property = $rental->property;
+                
+                // Skip if property doesn't exist
+                if (!$property) {
+                    return null;
+                }
+
                 return [
                     'id' => $rental->id,
                     'property' => [
-                        'id' => $rental->property->id,
-                        'name' => $rental->property->property_name,
-                        'estimated_monthly' => $rental->property->estimated_monthly,
-                        'images' => is_array($rental->property->images) ? $rental->property->images : [],
-                        'details' => $rental->property->details,
-                        'status' => $rental->property->status,
-                        'lot_area' => $rental->property->lot_area,
-                        'floor_area' => $rental->property->floor_area,
+                        'id' => $property->id,
+                        'name' => $property->property_name ?? 'Unknown Property',
+                        'estimated_monthly' => $property->estimated_monthly ?? 0,
+                        'images' => is_array($property->images) ? $property->images : [],
+                        'details' => $property->details ?? '',
+                        'status' => $property->status ?? 'Unknown',
+                        'lot_area' => $property->lot_area ?? null,
+                        'floor_area' => $property->floor_area ?? null,
                         'category' => [
-                            'id' => $rental->property->category->id ?? null,
-                            'name' => $rental->property->category->name ?? null,
-                            'description' => $rental->property->category->description ?? null,
+                            'id' => $property->category->id ?? null,
+                            'name' => $property->category->name ?? 'Uncategorized',
+                            'description' => $property->category->description ?? null,
                         ],
                         'location' => [
-                            'id' => $rental->property->location->id ?? null,
-                            'name' => $rental->property->location->name ?? null,
-                            'address' => $rental->property->location->address ?? null,
+                            'id' => $property->location->id ?? null,
+                            'name' => $property->location->name ?? 'Unknown Location',
+                            'address' => $property->location->address ?? null,
                         ],
                     ],
                     'rental_details' => [
                         'monthly_rent' => (float) $rental->monthly_rent,
-                        'formatted_monthly_rent' => $rental->formatted_monthly_rent,
+                        'formatted_monthly_rent' => $rental->formatted_monthly_rent ?? '₱0.00',
                         'security_deposit' => $rental->security_deposit ? (float) $rental->security_deposit : null,
-                        'formatted_security_deposit' => $rental->formatted_security_deposit,
+                        'formatted_security_deposit' => $rental->formatted_security_deposit ?? 'N/A',
                         'start_date' => $rental->start_date ? $rental->start_date->format('Y-m-d') : null,
                         'end_date' => $rental->end_date ? $rental->end_date->format('Y-m-d') : null,
-                        'status' => $rental->status,
-                        'remarks' => $rental->remarks,
+                        'status' => $rental->status ?? 'pending',
+                        'remarks' => $rental->remarks ?? 'No remarks',
                         'is_active' => $rental->isActive(),
                         'is_expired' => $rental->isExpired(),
                         'remaining_days' => $rental->remaining_days,
-                        'total_duration_days' => $rental->total_duration,
+                        'total_duration_days' => $rental->total_duration ?? 0,
                         'contract_signed_at' => $rental->contract_signed_at ? $rental->contract_signed_at->format('Y-m-d H:i:s') : null,
                     ],
-                    'terms_conditions' => $rental->terms_conditions,
-                    'notes' => $rental->notes,
+                    'terms_conditions' => $rental->terms_conditions ?? '',
+                    'notes' => $rental->notes ?? '',
                     'documents' => is_array($rental->documents) ? $rental->documents : [],
-                    'created_at' => $rental->created_at->format('Y-m-d H:i:s'),
-                    'updated_at' => $rental->updated_at->format('Y-m-d H:i:s'),
+                    'created_at' => $rental->created_at ? $rental->created_at->format('Y-m-d H:i:s') : null,
+                    'updated_at' => $rental->updated_at ? $rental->updated_at->format('Y-m-d H:i:s') : null,
                 ];
-            });
+            })->filter(); // Remove null entries
 
             return response()->json([
                 'success' => true,
                 'message' => 'Rentals retrieved successfully',
                 'data' => [
-                    'rentals' => $transformedRentals,
+                    'rentals' => $transformedRentals->values()->toArray(),
                     'statistics' => $statistics,
                     'pagination' => [
                         'current_page' => $rentals->currentPage(),
@@ -855,11 +863,26 @@ class ClientAuthController extends Controller
                 ]
             ]);
 
+        } catch (\Illuminate\Database\QueryException $e) {
+            \Log::error('Database error fetching client rentals: ' . $e->getMessage(), [
+                'client_id' => $client->id,
+                'request_data' => $request->all(),
+                'sql' => $e->getSql() ?? 'N/A',
+                'bindings' => $e->getBindings() ?? [],
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Database error occurred while retrieving rentals. Please try again later.',
+                'error' => config('app.debug') ? $e->getMessage() : null
+            ], 500);
         } catch (\Exception $e) {
             \Log::error('Failed to fetch client rentals: ' . $e->getMessage(), [
                 'client_id' => $client->id,
                 'request_data' => $request->all(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
             ]);
 
             return response()->json([
