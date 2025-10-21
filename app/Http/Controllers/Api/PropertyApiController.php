@@ -378,52 +378,19 @@ class PropertyApiController extends Controller
             // Execute query with pagination
             $rentals = $query->paginate($perPage);
 
-            // Transform rental data for response with proper null safety
+            // Transform rental data for response
             $transformedRentals = $rentals->map(function ($rental) {
-                // Check if property exists, if not, skip or provide default data
-                if (!$rental->property) {
-                    \Log::warning('Rental record found without associated property', [
-                        'rental_id' => $rental->id,
-                        'property_id' => $rental->property_id
-                    ]);
-                    
-                    return [
-                        'id' => $rental->id,
-                        'property' => null,
-                        'rental_details' => [
-                            'monthly_rent' => (float) $rental->monthly_rent,
-                            'formatted_monthly_rent' => $rental->formatted_monthly_rent ?? '₱0.00',
-                            'security_deposit' => $rental->security_deposit ? (float) $rental->security_deposit : null,
-                            'formatted_security_deposit' => $rental->formatted_security_deposit ?? 'N/A',
-                            'start_date' => $rental->start_date?->format('Y-m-d'),
-                            'end_date' => $rental->end_date?->format('Y-m-d'),
-                            'status' => $rental->status,
-                            'remarks' => $rental->remarks ?? 'No remarks',
-                            'is_active' => false,
-                            'is_expired' => true,
-                            'remaining_days' => null,
-                            'total_duration_days' => 0,
-                            'contract_signed_at' => $rental->contract_signed_at?->format('Y-m-d H:i:s'),
-                        ],
-                        'terms_conditions' => $rental->terms_conditions,
-                        'notes' => $rental->notes,
-                        'documents' => $rental->documents ?? [],
-                        'created_at' => $rental->created_at?->format('Y-m-d H:i:s'),
-                        'updated_at' => $rental->updated_at?->format('Y-m-d H:i:s'),
-                    ];
-                }
-
                 return [
                     'id' => $rental->id,
                     'property' => [
                         'id' => $rental->property->id ?? null,
                         'name' => $rental->property->property_name ?? 'N/A',
-                        'estimated_monthly' => $rental->property->estimated_monthly ? (float) $rental->property->estimated_monthly : null,
+                        'estimated_monthly' => $rental->property->estimated_monthly ?? null,
                         'images' => $rental->property->images ?? [],
                         'details' => $rental->property->details ?? null,
                         'status' => $rental->property->status ?? null,
-                        'lot_area' => $rental->property->lot_area ? (float) $rental->property->lot_area : null,
-                        'floor_area' => $rental->property->floor_area ? (float) $rental->property->floor_area : null,
+                        'lot_area' => $rental->property->lot_area ?? null,
+                        'floor_area' => $rental->property->floor_area ?? null,
                         'category' => [
                             'id' => $rental->property->category->id ?? null,
                             'name' => $rental->property->category->category_name ?? null,
@@ -437,24 +404,24 @@ class PropertyApiController extends Controller
                     ],
                     'rental_details' => [
                         'monthly_rent' => (float) $rental->monthly_rent,
-                        'formatted_monthly_rent' => $rental->formatted_monthly_rent ?? '₱0.00',
+                        'formatted_monthly_rent' => $rental->formatted_monthly_rent,
                         'security_deposit' => $rental->security_deposit ? (float) $rental->security_deposit : null,
-                        'formatted_security_deposit' => $rental->formatted_security_deposit ?? 'N/A',
+                        'formatted_security_deposit' => $rental->formatted_security_deposit,
                         'start_date' => $rental->start_date?->format('Y-m-d'),
                         'end_date' => $rental->end_date?->format('Y-m-d'),
                         'status' => $rental->status,
-                        'remarks' => $rental->remarks ?? 'No remarks',
+                        'remarks' => $rental->remarks,
                         'is_active' => $rental->isActive(),
                         'is_expired' => $rental->isExpired(),
                         'remaining_days' => $rental->remaining_days,
-                        'total_duration_days' => $rental->total_duration ?? 0,
+                        'total_duration_days' => $rental->total_duration,
                         'contract_signed_at' => $rental->contract_signed_at?->format('Y-m-d H:i:s'),
                     ],
                     'terms_conditions' => $rental->terms_conditions,
                     'notes' => $rental->notes,
                     'documents' => $rental->documents ?? [],
-                    'created_at' => $rental->created_at?->format('Y-m-d H:i:s'),
-                    'updated_at' => $rental->updated_at?->format('Y-m-d H:i:s'),
+                    'created_at' => $rental->created_at->format('Y-m-d H:i:s'),
+                    'updated_at' => $rental->updated_at->format('Y-m-d H:i:s'),
                 ];
             });
 
@@ -488,21 +455,14 @@ class PropertyApiController extends Controller
             // Log the error for debugging in production
             \Log::error('Failed to retrieve client rented properties', [
                 'client_id' => $request->user()?->id,
-                'error_message' => $e->getMessage(),
-                'error_file' => $e->getFile(),
-                'error_line' => $e->getLine(),
+                'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to retrieve rented properties. Please try again later.',
-                'error' => config('app.debug') ? [
-                    'message' => $e->getMessage(),
-                    'file' => $e->getFile(),
-                    'line' => $e->getLine(),
-                    'trace' => explode("\n", $e->getTraceAsString())
-                ] : 'Internal server error'
+                'message' => 'Failed to retrieve rented properties',
+                'error' => config('app.debug') ? $e->getMessage() : 'Internal server error'
             ], 500);
         }
     }
