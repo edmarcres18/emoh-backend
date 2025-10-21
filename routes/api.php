@@ -133,7 +133,7 @@ Route::prefix('site-settings')->group(function () {
     });
 });
 
-// Chatbot API Routes - Protected, requires client authentication
+// Chatbot API Routes - Protected with Sanctum token authentication for clients
 Route::prefix('chatbot')->middleware(['auth:client', 'throttle:60,1'])->group(function () {
     // Get chatbot status
     Route::get('/status', [ChatbotController::class, 'getStatus']);
