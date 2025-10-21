@@ -157,14 +157,6 @@ class Client extends Authenticatable
     }
 
     /**
-     * Get the chat history for the client.
-     */
-    public function chatHistory(): HasMany
-    {
-        return $this->hasMany(ChatHistory::class);
-    }
-
-    /**
      * Check if the client has any active rentals.
      */
     public function hasActiveRentals(): bool
