@@ -6,7 +6,6 @@ use App\Http\Controllers\Admin\SiteSettingsController;
 use App\Http\Controllers\Api\ClientAuthController;
 use App\Http\Controllers\Api\PropertyApiController;
 use App\Http\Controllers\Api\SiteSettingApiController;
-use App\Http\Controllers\Api\ChatbotController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -39,15 +38,6 @@ Route::prefix('client')->group(function () {
 
         // Client rental properties routes
         Route::get('/my-rentals', [ClientAuthController::class, 'getClientRentals']);
-
-        // Chatbot routes with rate limiting
-        Route::prefix('chatbot')->middleware('throttle:20,1')->group(function () {
-            Route::post('/send', [ChatbotController::class, 'sendMessage']);
-            Route::get('/conversations', [ChatbotController::class, 'getConversations']);
-            Route::get('/conversations/{id}/messages', [ChatbotController::class, 'getMessages']);
-            Route::delete('/conversations/{id}', [ChatbotController::class, 'deleteConversation']);
-            Route::post('/conversations/{id}/archive', [ChatbotController::class, 'archiveConversation']);
-        });
     });
 });
 
