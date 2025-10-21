@@ -36,7 +36,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->api(prepend: [
             HandleCors::class,
         ]);
-        
+
         $middleware->api(append: [
             \App\Http\Middleware\ForceJsonResponse::class,
         ]);
