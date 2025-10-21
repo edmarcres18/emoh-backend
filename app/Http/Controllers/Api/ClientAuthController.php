@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Client;
+use App\Models\Rented;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
@@ -676,6 +677,185 @@ class ClientAuthController extends Controller
                 'success' => false,
                 'message' => 'Google authentication failed',
                 'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get authenticated client's rental properties with detailed information
+     * 
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function getClientRentals(Request $request): JsonResponse
+    {
+        $client = $request->user();
+
+        // Check if client account is active
+        if (!$client->is_active) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Your account has been deactivated. Please contact support for assistance.'
+            ], 403);
+        }
+
+        // Validate request parameters
+        $validator = Validator::make($request->all(), [
+            'status' => 'nullable|string|in:active,pending,expired,terminated,ended,all',
+            'per_page' => 'nullable|integer|min:1|max:100',
+            'page' => 'nullable|integer|min:1',
+            'search' => 'nullable|string|max:255',
+            'sort_by' => 'nullable|string|in:start_date,end_date,monthly_rent,created_at,property_name',
+            'sort_order' => 'nullable|string|in:asc,desc',
+            'date_from' => 'nullable|date',
+            'date_to' => 'nullable|date|after_or_equal:date_from',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        try {
+            // Build query with proper relationships
+            $query = Rented::with(['property.category', 'property.location'])
+                ->where('client_id', $client->id);
+
+            // Apply status filter
+            $status = $request->input('status', 'all');
+            if ($status !== 'all') {
+                $query->where('status', $status);
+            }
+
+            // Apply search filter (property name or notes)
+            if ($request->has('search') && $request->search) {
+                $search = $request->search;
+                $query->where(function ($q) use ($search) {
+                    $q->whereHas('property', function ($propertyQuery) use ($search) {
+                        $propertyQuery->where('property_name', 'like', "%{$search}%")
+                            ->orWhere('details', 'like', "%{$search}%");
+                    })
+                    ->orWhere('notes', 'like', "%{$search}%")
+                    ->orWhere('terms_conditions', 'like', "%{$search}%");
+                });
+            }
+
+            // Apply date range filters
+            if ($request->has('date_from') && $request->date_from) {
+                $query->where('start_date', '>=', $request->date_from);
+            }
+            if ($request->has('date_to') && $request->date_to) {
+                $query->where('start_date', '<=', $request->date_to);
+            }
+
+            // Apply sorting
+            $sortBy = $request->input('sort_by', 'created_at');
+            $sortOrder = $request->input('sort_order', 'desc');
+            
+            if ($sortBy === 'property_name') {
+                $query->join('properties', 'rented.property_id', '=', 'properties.id')
+                    ->orderBy('properties.property_name', $sortOrder)
+                    ->select('rented.*');
+            } else {
+                $query->orderBy($sortBy, $sortOrder);
+            }
+
+            // Paginate results
+            $perPage = $request->input('per_page', 15);
+            $rentals = $query->paginate($perPage);
+
+            // Update remarks for all items in the collection
+            $rentals->getCollection()->each(function ($rental) {
+                $rental->updateRemarks();
+            });
+
+            // Transform data to match frontend expectations with only fillable attributes
+            $transformedRentals = $rentals->getCollection()->map(function ($rental) {
+                return [
+                    'id' => $rental->id,
+                    'property' => [
+                        'id' => $rental->property->id,
+                        'name' => $rental->property->property_name,
+                        'estimated_monthly' => $rental->property->estimated_monthly,
+                        'images' => $rental->property->images ?? [],
+                        'details' => $rental->property->details,
+                        'status' => $rental->property->status,
+                        'lot_area' => $rental->property->lot_area,
+                        'floor_area' => $rental->property->floor_area,
+                        'category' => $rental->property->category ? [
+                            'id' => $rental->property->category->id,
+                            'name' => $rental->property->category->name,
+                            'description' => $rental->property->category->description,
+                        ] : null,
+                        'location' => $rental->property->location ? [
+                            'id' => $rental->property->location->id,
+                            'name' => $rental->property->location->name,
+                            'address' => $rental->property->location->address,
+                        ] : null,
+                    ],
+                    'rental_details' => [
+                        'monthly_rent' => $rental->monthly_rent,
+                        'formatted_monthly_rent' => $rental->formatted_monthly_rent,
+                        'security_deposit' => $rental->security_deposit,
+                        'formatted_security_deposit' => $rental->formatted_security_deposit,
+                        'start_date' => $rental->start_date ? $rental->start_date->format('Y-m-d') : null,
+                        'end_date' => $rental->end_date ? $rental->end_date->format('Y-m-d') : null,
+                        'status' => $rental->status,
+                        'remarks' => $rental->remarks,
+                        'is_active' => $rental->isActive(),
+                        'is_expired' => $rental->isExpired(),
+                        'remaining_days' => $rental->remaining_days,
+                        'total_duration_days' => $rental->total_duration,
+                        'contract_signed_at' => $rental->contract_signed_at ? $rental->contract_signed_at->format('Y-m-d H:i:s') : null,
+                    ],
+                    'terms_conditions' => $rental->terms_conditions,
+                    'notes' => $rental->notes,
+                    'documents' => $rental->documents ?? [],
+                    'created_at' => $rental->created_at->format('Y-m-d H:i:s'),
+                    'updated_at' => $rental->updated_at->format('Y-m-d H:i:s'),
+                ];
+            });
+
+            // Calculate statistics for the client
+            $statistics = [
+                'total_rentals' => Rented::where('client_id', $client->id)->count(),
+                'active_rentals' => Rented::where('client_id', $client->id)->where('status', 'active')->count(),
+                'pending_rentals' => Rented::where('client_id', $client->id)->where('status', 'pending')->count(),
+                'expired_rentals' => Rented::where('client_id', $client->id)->where('status', 'expired')->count(),
+                'terminated_rentals' => Rented::where('client_id', $client->id)->where('status', 'terminated')->count(),
+            ];
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Rentals retrieved successfully',
+                'data' => [
+                    'rentals' => $transformedRentals,
+                    'statistics' => $statistics,
+                    'pagination' => [
+                        'current_page' => $rentals->currentPage(),
+                        'per_page' => $rentals->perPage(),
+                        'total' => $rentals->total(),
+                        'last_page' => $rentals->lastPage(),
+                        'from' => $rentals->firstItem(),
+                        'to' => $rentals->lastItem(),
+                    ]
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Failed to retrieve client rentals: ' . $e->getMessage(), [
+                'client_id' => $client->id,
+                'request_data' => $request->all(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve rentals. Please try again later.',
+                'error' => config('app.debug') ? $e->getMessage() : null
             ], 500);
         }
     }

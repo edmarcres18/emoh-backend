@@ -34,6 +34,9 @@ Route::prefix('client')->group(function () {
         Route::get('/check-email-change-eligibility', [ClientAuthController::class, 'checkEmailChangeEligibility']);
         Route::post('/request-email-change', [ClientAuthController::class, 'requestEmailChange'])->middleware('throttle:5,1');
         Route::post('/verify-email-change', [ClientAuthController::class, 'verifyEmailChange'])->middleware('throttle:10,1');
+
+        // Client rental properties routes
+        Route::get('/my-rentals', [ClientAuthController::class, 'getClientRentals']);
     });
 });
 
