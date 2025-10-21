@@ -24,13 +24,12 @@ return Application::configure(basePath: dirname(__DIR__))
             AddLinkHeadersForPreloadedAssets::class,
         ]);
 
-        // Register Spatie Permission middleware and custom middleware
+        // Register Spatie Permission middleware
         $middleware->alias([
             'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
             'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
             'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
             'force.json' => \App\Http\Middleware\ForceJsonResponse::class,
-            'client' => \App\Http\Middleware\ClientAuth::class,
         ]);
 
         // Apply JSON middleware to API routes
