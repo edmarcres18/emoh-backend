@@ -774,13 +774,19 @@ class ClientAuthController extends Controller
 
             // Transform data to match frontend expectations with only fillable attributes
             $transformedRentals = $rentals->getCollection()->map(function ($rental) {
+                // Ensure images is always an array
+                $propertyImages = $rental->property->images;
+                if (!is_array($propertyImages)) {
+                    $propertyImages = $propertyImages ? [$propertyImages] : [];
+                }
+                
                 return [
                     'id' => $rental->id,
                     'property' => [
                         'id' => $rental->property->id,
                         'name' => $rental->property->property_name,
                         'estimated_monthly' => $rental->property->estimated_monthly,
-                        'images' => $rental->property->images ?? [],
+                        'images' => $propertyImages, // Always an array
                         'details' => $rental->property->details,
                         'status' => $rental->property->status,
                         'lot_area' => $rental->property->lot_area,
