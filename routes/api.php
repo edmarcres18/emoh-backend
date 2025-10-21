@@ -6,7 +6,6 @@ use App\Http\Controllers\Admin\SiteSettingsController;
 use App\Http\Controllers\Api\ClientAuthController;
 use App\Http\Controllers\Api\PropertyApiController;
 use App\Http\Controllers\Api\SiteSettingApiController;
-use App\Http\Controllers\Api\ChatbotController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -39,16 +38,6 @@ Route::prefix('client')->group(function () {
 
         // Client rental properties routes
         Route::get('/my-rentals', [ClientAuthController::class, 'getClientRentals']);
-
-        // Chatbot routes - AI-powered support with client data analysis
-        Route::prefix('chatbot')->group(function () {
-            Route::get('/conversation', [ChatbotController::class, 'getOrCreateConversation']);
-            Route::post('/message', [ChatbotController::class, 'sendMessage']);
-            Route::get('/conversations', [ChatbotController::class, 'getConversations']);
-            Route::get('/conversations/{id}/messages', [ChatbotController::class, 'getMessages']);
-            Route::put('/conversations/{id}/resolve', [ChatbotController::class, 'resolveConversation']);
-            Route::delete('/conversations/{id}', [ChatbotController::class, 'deleteConversation']);
-        });
     });
 });
 
