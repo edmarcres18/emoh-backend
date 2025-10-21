@@ -9,6 +9,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Cache;
 
 class PropertyApiController extends Controller
 {
@@ -22,6 +24,21 @@ class PropertyApiController extends Controller
     }
     /**
      * Get properties by status with pagination and filtering
+     *
+     * @param Request $request
+     * @return JsonResponse
+     *
+     * Query Parameters:
+     * - status (required): Property status (Available, Rented, Under Maintenance, Sold)
+     * - per_page (optional): Results per page (1-100, default: 15)
+     * - page (optional): Page number (default: 1)
+     * - search (optional): Search term for property name or details
+     * - category_id (optional): Filter by category ID
+     * - location_id (optional): Filter by location ID
+     * - min_price (optional): Minimum monthly price
+     * - max_price (optional): Maximum monthly price
+     * - sort_by (optional): Sort field (default: created_at)
+     * - sort_order (optional): Sort direction (asc/desc, default: desc)
      */
     public function getPropertiesByStatus(Request $request): JsonResponse
     {
@@ -33,7 +50,7 @@ class PropertyApiController extends Controller
             'category_id' => 'nullable|integer|exists:categories,id',
             'location_id' => 'nullable|integer|exists:locations,id',
             'min_price' => 'nullable|numeric|min:0',
-            'max_price' => 'nullable|numeric|min:0',
+            'max_price' => 'nullable|numeric|min:0|gt:min_price',
             'sort_by' => 'nullable|string|in:property_name,estimated_monthly,created_at,updated_at',
             'sort_order' => 'nullable|string|in:asc,desc',
         ]);
@@ -47,8 +64,9 @@ class PropertyApiController extends Controller
         }
 
         try {
-            $perPage = $request->get('per_page', 15);
-            $search = $request->get('search');
+            // Sanitize and validate inputs
+            $perPage = min(100, max(1, (int) $request->get('per_page', 15)));
+            $search = $request->get('search') ? trim($request->get('search')) : null;
             $categoryId = $request->get('category_id');
             $locationId = $request->get('location_id');
             $minPrice = $request->get('min_price');
@@ -56,8 +74,11 @@ class PropertyApiController extends Controller
             $sortBy = $request->get('sort_by', 'created_at');
             $sortOrder = $request->get('sort_order', 'desc');
 
-            $query = Property::with(['category', 'location'])
-                ->where('status', $request->status);
+            // Build optimized query with selective eager loading
+            $query = Property::with([
+                'category:id,category_name,description',
+                'location:id,location_name,location_address'
+            ])->where('status', $request->status);
 
             // Apply search filter
             if ($search) {
@@ -108,6 +129,12 @@ class PropertyApiController extends Controller
             ], 200);
 
         } catch (\Exception $e) {
+            Log::error('Failed to retrieve properties by status', [
+                'status' => $request->status ?? null,
+                'error' => $e->getMessage(),
+                'trace' => config('app.debug') ? $e->getTraceAsString() : null
+            ]);
+
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to retrieve properties',
@@ -118,6 +145,21 @@ class PropertyApiController extends Controller
 
     /**
      * Get featured properties with pagination and filtering
+     *
+     * @param Request $request
+     * @return JsonResponse
+     *
+     * Query Parameters:
+     * - per_page (optional): Results per page (1-100, default: 15)
+     * - page (optional): Page number (default: 1)
+     * - search (optional): Search term for property name or details
+     * - category_id (optional): Filter by category ID
+     * - location_id (optional): Filter by location ID
+     * - status (optional): Filter by status
+     * - min_price (optional): Minimum monthly price
+     * - max_price (optional): Maximum monthly price
+     * - sort_by (optional): Sort field (default: created_at)
+     * - sort_order (optional): Sort direction (asc/desc, default: desc)
      */
     public function getFeaturedProperties(Request $request): JsonResponse
     {
@@ -129,7 +171,7 @@ class PropertyApiController extends Controller
             'location_id' => 'nullable|integer|exists:locations,id',
             'status' => 'nullable|string|in:Available,Rented,Under Maintenance,Sold',
             'min_price' => 'nullable|numeric|min:0',
-            'max_price' => 'nullable|numeric|min:0',
+            'max_price' => 'nullable|numeric|min:0|gt:min_price',
             'sort_by' => 'nullable|string|in:property_name,estimated_monthly,created_at,updated_at',
             'sort_order' => 'nullable|string|in:asc,desc',
         ]);
@@ -143,8 +185,9 @@ class PropertyApiController extends Controller
         }
 
         try {
-            $perPage = $request->get('per_page', 15);
-            $search = $request->get('search');
+            // Sanitize and validate inputs
+            $perPage = min(100, max(1, (int) $request->get('per_page', 15)));
+            $search = $request->get('search') ? trim($request->get('search')) : null;
             $categoryId = $request->get('category_id');
             $locationId = $request->get('location_id');
             $status = $request->get('status');
@@ -153,8 +196,11 @@ class PropertyApiController extends Controller
             $sortBy = $request->get('sort_by', 'created_at');
             $sortOrder = $request->get('sort_order', 'desc');
 
-            $query = Property::with(['category', 'location'])
-                ->where('is_featured', true);
+            // Build optimized query with selective eager loading
+            $query = Property::with([
+                'category:id,category_name,description',
+                'location:id,location_name,location_address'
+            ])->where('is_featured', true);
 
             // Apply search filter
             if ($search) {
@@ -210,6 +256,11 @@ class PropertyApiController extends Controller
             ], 200);
 
         } catch (\Exception $e) {
+            Log::error('Failed to retrieve featured properties', [
+                'error' => $e->getMessage(),
+                'trace' => config('app.debug') ? $e->getTraceAsString() : null
+            ]);
+
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to retrieve featured properties',
@@ -220,20 +271,33 @@ class PropertyApiController extends Controller
 
     /**
      * Get property statistics
+     *
+     * Returns aggregate statistics about properties:
+     * - Total properties count
+     * - Count by status (Available, Rented, Featured, Maintenance, Sold)
+     * - Average monthly rate
+     * - Total estimated value
+     *
+     * Results are cached for 5 minutes for performance
+     *
+     * @return JsonResponse
      */
     public function getPropertyStats(): JsonResponse
     {
         try {
-            $stats = [
-                'total_properties' => Property::count(),
-                'available_properties' => Property::where('status', 'Available')->count(),
-                'rented_properties' => Property::where('status', 'Rented')->count(),
-                'featured_properties' => Property::where('is_featured', true)->count(),
-                'maintenance_properties' => Property::where('status', 'Under Maintenance')->count(),
-                'sold_properties' => Property::where('status', 'Sold')->count(),
-                'average_monthly_rate' => Property::avg('estimated_monthly'),
-                'total_estimated_value' => Property::sum('estimated_monthly'),
-            ];
+            // Cache statistics for 5 minutes to reduce database load
+            $stats = Cache::remember('property_stats', 300, function () {
+                return [
+                    'total_properties' => Property::count(),
+                    'available_properties' => Property::where('status', 'Available')->count(),
+                    'rented_properties' => Property::where('status', 'Rented')->count(),
+                    'featured_properties' => Property::where('is_featured', true)->count(),
+                    'maintenance_properties' => Property::where('status', 'Under Maintenance')->count(),
+                    'sold_properties' => Property::where('status', 'Sold')->count(),
+                    'average_monthly_rate' => round((float) Property::avg('estimated_monthly'), 2),
+                    'total_estimated_value' => round((float) Property::sum('estimated_monthly'), 2),
+                ];
+            });
 
             return response()->json([
                 'success' => true,
@@ -242,6 +306,11 @@ class PropertyApiController extends Controller
             ], 200);
 
         } catch (\Exception $e) {
+            Log::error('Failed to retrieve property statistics', [
+                'error' => $e->getMessage(),
+                'trace' => config('app.debug') ? $e->getTraceAsString() : null
+            ]);
+
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to retrieve property statistics',
@@ -252,6 +321,11 @@ class PropertyApiController extends Controller
 
     /**
      * Get available property statuses
+     *
+     * Returns the list of valid property status values
+     * used throughout the application
+     *
+     * @return JsonResponse
      */
     public function getAvailableStatuses(): JsonResponse
     {
@@ -265,6 +339,10 @@ class PropertyApiController extends Controller
             ], 200);
 
         } catch (\Exception $e) {
+            Log::error('Failed to retrieve available statuses', [
+                'error' => $e->getMessage()
+            ]);
+
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to retrieve available statuses',
