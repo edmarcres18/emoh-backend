@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Http\Controllers\Controller;
 use App\Models\Property;
 use App\Models\Rented;
 use Illuminate\Http\Request;
@@ -9,7 +10,7 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 
-class PropertyApiController extends BaseApiController
+class PropertyApiController extends Controller
 {
     /**
      * Create a new controller instance.
@@ -38,7 +39,11 @@ class PropertyApiController extends BaseApiController
         ]);
 
         if ($validator->fails()) {
-            return $this->validationErrorResponse($validator->errors());
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
         }
 
         try {
@@ -86,16 +91,28 @@ class PropertyApiController extends BaseApiController
 
             $properties = $query->paginate($perPage);
 
-            return $this->paginatedResponse($properties, 'Properties retrieved successfully');
+            return response()->json([
+                'success' => true,
+                'message' => 'Properties retrieved successfully',
+                'data' => [
+                    'properties' => $properties->items(),
+                    'pagination' => [
+                        'current_page' => $properties->currentPage(),
+                        'per_page' => $properties->perPage(),
+                        'total' => $properties->total(),
+                        'last_page' => $properties->lastPage(),
+                        'from' => $properties->firstItem(),
+                        'to' => $properties->lastItem(),
+                    ]
+                ]
+            ], 200);
 
         } catch (\Exception $e) {
-            return $this->errorResponse(
-                'Failed to retrieve properties',
-                500,
-                'INTERNAL_SERVER_ERROR',
-                [],
-                config('app.debug') ? ['exception' => $e->getMessage()] : []
-            );
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve properties',
+                'error' => config('app.debug') ? $e->getMessage() : 'Internal server error'
+            ], 500);
         }
     }
 
@@ -118,7 +135,11 @@ class PropertyApiController extends BaseApiController
         ]);
 
         if ($validator->fails()) {
-            return $this->validationErrorResponse($validator->errors());
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
         }
 
         try {
@@ -172,16 +193,28 @@ class PropertyApiController extends BaseApiController
 
             $properties = $query->paginate($perPage);
 
-            return $this->paginatedResponse($properties, 'Featured properties retrieved successfully');
+            return response()->json([
+                'success' => true,
+                'message' => 'Featured properties retrieved successfully',
+                'data' => [
+                    'properties' => $properties->items(),
+                    'pagination' => [
+                        'current_page' => $properties->currentPage(),
+                        'per_page' => $properties->perPage(),
+                        'total' => $properties->total(),
+                        'last_page' => $properties->lastPage(),
+                        'from' => $properties->firstItem(),
+                        'to' => $properties->lastItem(),
+                    ]
+                ]
+            ], 200);
 
         } catch (\Exception $e) {
-            return $this->errorResponse(
-                'Failed to retrieve featured properties',
-                500,
-                'INTERNAL_SERVER_ERROR',
-                [],
-                config('app.debug') ? ['exception' => $e->getMessage()] : []
-            );
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve featured properties',
+                'error' => config('app.debug') ? $e->getMessage() : 'Internal server error'
+            ], 500);
         }
     }
 
@@ -202,16 +235,18 @@ class PropertyApiController extends BaseApiController
                 'total_estimated_value' => Property::sum('estimated_monthly'),
             ];
 
-            return $this->successResponse($stats, 'Property statistics retrieved successfully');
+            return response()->json([
+                'success' => true,
+                'message' => 'Property statistics retrieved successfully',
+                'data' => $stats
+            ], 200);
 
         } catch (\Exception $e) {
-            return $this->errorResponse(
-                'Failed to retrieve property statistics',
-                500,
-                'INTERNAL_SERVER_ERROR',
-                [],
-                config('app.debug') ? ['exception' => $e->getMessage()] : []
-            );
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve property statistics',
+                'error' => config('app.debug') ? $e->getMessage() : 'Internal server error'
+            ], 500);
         }
     }
 
@@ -223,16 +258,18 @@ class PropertyApiController extends BaseApiController
         try {
             $statuses = ['Available', 'Rented', 'Under Maintenance', 'Sold'];
 
-            return $this->successResponse($statuses, 'Available statuses retrieved successfully');
+            return response()->json([
+                'success' => true,
+                'message' => 'Available statuses retrieved successfully',
+                'data' => $statuses
+            ], 200);
 
         } catch (\Exception $e) {
-            return $this->errorResponse(
-                'Failed to retrieve available statuses',
-                500,
-                'INTERNAL_SERVER_ERROR',
-                [],
-                config('app.debug') ? ['exception' => $e->getMessage()] : []
-            );
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve available statuses',
+                'error' => config('app.debug') ? $e->getMessage() : 'Internal server error'
+            ], 500);
         }
     }
 
@@ -253,7 +290,10 @@ class PropertyApiController extends BaseApiController
 
             // Check if client account is active
             if (!$client || !$client->is_active) {
-                return $this->forbiddenResponse('Your account has been deactivated. Please contact support for assistance.');
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Your account has been deactivated. Please contact support for assistance.'
+                ], 403);
             }
 
             // Validate request parameters
@@ -269,7 +309,11 @@ class PropertyApiController extends BaseApiController
             ]);
 
             if ($validator->fails()) {
-                return $this->validationErrorResponse($validator->errors());
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validation failed',
+                    'errors' => $validator->errors()
+                ], 422);
             }
 
             // Get request parameters with defaults
@@ -390,14 +434,22 @@ class PropertyApiController extends BaseApiController
                 'terminated_rentals' => $client->rentals()->where('status', 'terminated')->count(),
             ];
 
-            return $this->paginatedResponse(
-                $rentals,
-                'Rented properties retrieved successfully',
-                [
+            return response()->json([
+                'success' => true,
+                'message' => 'Rented properties retrieved successfully',
+                'data' => [
                     'rentals' => $transformedRentals,
-                    'statistics' => $stats
+                    'statistics' => $stats,
+                    'pagination' => [
+                        'current_page' => $rentals->currentPage(),
+                        'per_page' => $rentals->perPage(),
+                        'total' => $rentals->total(),
+                        'last_page' => $rentals->lastPage(),
+                        'from' => $rentals->firstItem(),
+                        'to' => $rentals->lastItem(),
+                    ]
                 ]
-            );
+            ], 200);
 
         } catch (\Exception $e) {
             // Log the error for debugging in production
@@ -407,13 +459,11 @@ class PropertyApiController extends BaseApiController
                 'trace' => $e->getTraceAsString()
             ]);
 
-            return $this->errorResponse(
-                'Failed to retrieve rented properties',
-                500,
-                'INTERNAL_SERVER_ERROR',
-                [],
-                config('app.debug') ? ['exception' => $e->getMessage()] : []
-            );
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve rented properties',
+                'error' => config('app.debug') ? $e->getMessage() : 'Internal server error'
+            ], 500);
         }
     }
 }
