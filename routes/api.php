@@ -134,19 +134,22 @@ Route::prefix('site-settings')->group(function () {
 });
 
 // Chatbot API Routes - Protected, requires client authentication
-Route::prefix('chatbot')->middleware(['auth:client', 'throttle:60,1'])->group(function () {
-    // Get chatbot status
+Route::prefix('chatbot')->middleware(['throttle:60,1'])->group(function () {
+    // Public endpoint - Get chatbot status (no auth required)
     Route::get('/status', [ChatbotController::class, 'getStatus']);
     
-    // Create new chat session
-    Route::post('/session', [ChatbotController::class, 'createSession']);
-    
-    // Send message to chatbot
-    Route::post('/message', [ChatbotController::class, 'sendMessage']);
-    
-    // Get chat history for a session
-    Route::get('/history', [ChatbotController::class, 'getHistory']);
-    
-    // Clear chat history for a session
-    Route::delete('/history', [ChatbotController::class, 'clearHistory']);
+    // Protected routes - Require client authentication via Sanctum token
+    Route::middleware('auth:client')->group(function () {
+        // Create new chat session
+        Route::post('/session', [ChatbotController::class, 'createSession']);
+        
+        // Send message to chatbot
+        Route::post('/message', [ChatbotController::class, 'sendMessage']);
+        
+        // Get chat history for a session
+        Route::get('/history', [ChatbotController::class, 'getHistory']);
+        
+        // Clear chat history for a session
+        Route::delete('/history', [ChatbotController::class, 'clearHistory']);
+    });
 });
