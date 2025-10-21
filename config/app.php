@@ -56,6 +56,31 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Force HTTPS
+    |--------------------------------------------------------------------------
+    |
+    | This option controls whether the application should force HTTPS for all
+    | URLs, regardless of the environment. Set to true to force HTTPS even in
+    | local/development environments. In production, HTTPS is always enforced.
+    |
+    */
+
+    'force_https' => (bool) env('FORCE_HTTPS', false),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Asset URL
+    |--------------------------------------------------------------------------
+    |
+    | This URL is used to generate URLs for assets (CSS, JavaScript, images).
+    | If not set, it defaults to APP_URL. Useful for CDN configurations.
+    |
+    */
+
+    'asset_url' => env('ASSET_URL', null),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Timezone
     |--------------------------------------------------------------------------
     |

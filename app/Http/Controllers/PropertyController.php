@@ -8,6 +8,8 @@ use App\Services\PropertyService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -67,14 +69,56 @@ class PropertyController extends Controller
     public function store(PropertyRequest $request): RedirectResponse
     {
         try {
-            $this->propertyService->createProperty($request->validated());
+            $validatedData = $request->validated();
+            
+            // Log property creation attempt
+            Log::info('Creating new property', [
+                'property_name' => $validatedData['property_name'] ?? null,
+                'user_id' => auth()->id(),
+            ]);
+            
+            $property = $this->propertyService->createProperty($validatedData);
+            
+            // Log successful creation
+            Log::info('Property created successfully', [
+                'property_id' => $property->id,
+                'property_name' => $property->property_name,
+            ]);
 
             return redirect()->route('properties.index')
                 ->with('success', 'Property created successfully.');
-        } catch (\Exception $e) {
+                
+        } catch (ValidationException $e) {
+            // Re-throw validation exceptions to let Laravel handle them
+            throw $e;
+            
+        } catch (\InvalidArgumentException $e) {
+            // Handle business logic exceptions
+            Log::warning('Property creation failed - validation error', [
+                'error' => $e->getMessage(),
+                'user_id' => auth()->id(),
+            ]);
+            
             return redirect()->back()
                 ->withInput()
-                ->with('error', 'Failed to create property. Please try again.');
+                ->with('error', $e->getMessage());
+                
+        } catch (\Exception $e) {
+            // Log unexpected errors
+            Log::error('Property creation failed - unexpected error', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'user_id' => auth()->id(),
+            ]);
+            
+            // In production, show a generic message; in development, show the actual error
+            $errorMessage = config('app.debug') 
+                ? 'Failed to create property: ' . $e->getMessage()
+                : 'Failed to create property. Please try again or contact support if the issue persists.';
+            
+            return redirect()->back()
+                ->withInput()
+                ->with('error', $errorMessage);
         }
     }
 
@@ -114,14 +158,57 @@ class PropertyController extends Controller
     public function update(PropertyRequest $request, Property $property): RedirectResponse
     {
         try {
-            $this->propertyService->updateProperty($property, $request->validated());
+            $validatedData = $request->validated();
+            
+            // Log update attempt
+            Log::info('Updating property', [
+                'property_id' => $property->id,
+                'property_name' => $property->property_name,
+                'user_id' => auth()->id(),
+            ]);
+            
+            $updatedProperty = $this->propertyService->updateProperty($property, $validatedData);
+            
+            // Log successful update
+            Log::info('Property updated successfully', [
+                'property_id' => $updatedProperty->id,
+            ]);
 
             return redirect()->route('properties.index')
                 ->with('success', 'Property updated successfully.');
-        } catch (\Exception $e) {
+                
+        } catch (ValidationException $e) {
+            // Re-throw validation exceptions
+            throw $e;
+            
+        } catch (\InvalidArgumentException $e) {
+            // Handle business logic exceptions (e.g., active rental)
+            Log::warning('Property update failed - validation error', [
+                'property_id' => $property->id,
+                'error' => $e->getMessage(),
+                'user_id' => auth()->id(),
+            ]);
+            
             return redirect()->back()
                 ->withInput()
-                ->with('error', 'Failed to update property. Please try again.');
+                ->with('error', $e->getMessage());
+                
+        } catch (\Exception $e) {
+            // Log unexpected errors
+            Log::error('Property update failed - unexpected error', [
+                'property_id' => $property->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'user_id' => auth()->id(),
+            ]);
+            
+            $errorMessage = config('app.debug') 
+                ? 'Failed to update property: ' . $e->getMessage()
+                : 'Failed to update property. Please try again or contact support if the issue persists.';
+            
+            return redirect()->back()
+                ->withInput()
+                ->with('error', $errorMessage);
         }
     }
 

@@ -9,6 +9,8 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Http\UploadedFile;
 
 class PropertyService
 {
@@ -113,12 +115,36 @@ class PropertyService
     public function createProperty(array $data): Property
     {
         return DB::transaction(function () use ($data) {
-            // Handle image uploads if present
-            if (isset($data['images']) && is_array($data['images'])) {
-                $data['images'] = $this->handleImageUploads($data['images']);
-            }
+            try {
+                // Handle image uploads if present
+                $uploadedImages = [];
+                if (isset($data['images']) && is_array($data['images']) && count($data['images']) > 0) {
+                    $uploadedImages = $this->handleImageUploads($data['images']);
+                    $data['images'] = $uploadedImages;
+                } else {
+                    // Set empty array if no images
+                    $data['images'] = [];
+                }
 
-            return Property::create($data);
+                // Create the property
+                $property = Property::create($data);
+                
+                Log::info('Property created in database', [
+                    'property_id' => $property->id,
+                    'images_count' => count($uploadedImages),
+                ]);
+                
+                return $property;
+                
+            } catch (\Exception $e) {
+                // If property creation fails, clean up uploaded images
+                if (!empty($uploadedImages)) {
+                    Log::warning('Rolling back image uploads due to property creation failure');
+                    $this->deleteImages($uploadedImages);
+                }
+                
+                throw $e;
+            }
         });
     }
 
@@ -128,31 +154,58 @@ class PropertyService
     public function updateProperty(Property $property, array $data): Property
     {
         return DB::transaction(function () use ($property, $data) {
-            // Handle image uploads if present
-            if (isset($data['images']) && is_array($data['images']) && count($data['images']) > 0) {
-                $existingImages = $property->images ?? [];
+            try {
+                $imagesToDelete = [];
+                $uploadedImages = [];
                 
-                // Delete old images if replacing
-                if (isset($data['replace_images']) && $data['replace_images']) {
-                    if ($existingImages) {
-                        $this->deleteImages($existingImages);
+                // Handle image uploads if present
+                if (isset($data['images']) && is_array($data['images']) && count($data['images']) > 0) {
+                    $existingImages = $property->images ?? [];
+                    
+                    // Delete old images if replacing
+                    if (isset($data['replace_images']) && $data['replace_images']) {
+                        if ($existingImages) {
+                            $imagesToDelete = $existingImages;
+                        }
+                        $existingImages = [];
                     }
-                    $existingImages = [];
+                    
+                    // Upload new images and merge with existing
+                    $uploadedImages = $this->handleImageUploads($data['images'], $existingImages);
+                    $data['images'] = $uploadedImages;
+                } else {
+                    // Remove images key if no new images to avoid overwriting existing ones
+                    unset($data['images']);
                 }
                 
-                // Upload new images and merge with existing
-                $newImages = $this->handleImageUploads($data['images'], $existingImages);
-                $data['images'] = $newImages;
-            } else {
-                // Remove images key if no new images to avoid overwriting existing ones
-                unset($data['images']);
-            }
-            
-            // Remove replace_images from data as it's not a model field
-            unset($data['replace_images']);
+                // Remove replace_images from data as it's not a model field
+                unset($data['replace_images']);
 
-            $property->update($data);
-            return $property->fresh(['category', 'location']);
+                // Update the property
+                $property->update($data);
+                
+                // Only delete old images after successful update
+                if (!empty($imagesToDelete)) {
+                    $this->deleteImages($imagesToDelete);
+                    Log::info('Deleted replaced images', ['count' => count($imagesToDelete)]);
+                }
+                
+                Log::info('Property updated in database', [
+                    'property_id' => $property->id,
+                    'new_images_count' => count($uploadedImages),
+                ]);
+                
+                return $property->fresh(['category', 'location']);
+                
+            } catch (\Exception $e) {
+                // If update fails, clean up newly uploaded images
+                if (!empty($uploadedImages)) {
+                    Log::warning('Rolling back new image uploads due to property update failure');
+                    $this->deleteImages($uploadedImages);
+                }
+                
+                throw $e;
+            }
         });
     }
 
@@ -252,15 +305,51 @@ class PropertyService
     private function handleImageUploads(array $images, array $existingImages = []): array
     {
         $uploadedImages = $existingImages;
+        $uploadedPaths = [];
 
-        foreach ($images as $image) {
-            if ($image instanceof \Illuminate\Http\UploadedFile && $image->isValid()) {
-                $path = Storage::disk('public')->put('properties', $image);
-                $uploadedImages[] = $path;
+        try {
+            foreach ($images as $index => $image) {
+                // Only process valid uploaded files
+                if ($image instanceof UploadedFile && $image->isValid()) {
+                    // Generate a unique filename with timestamp
+                    $filename = time() . '_' . uniqid() . '.' . $image->getClientOriginalExtension();
+                    
+                    // Store with a custom filename for better organization
+                    $path = $image->storeAs('properties', $filename, 'public');
+                    
+                    if ($path) {
+                        $uploadedImages[] = $path;
+                        $uploadedPaths[] = $path;
+                        
+                        Log::debug('Image uploaded successfully', [
+                            'index' => $index,
+                            'path' => $path,
+                            'original_name' => $image->getClientOriginalName(),
+                            'size' => $image->getSize(),
+                        ]);
+                    } else {
+                        throw new \RuntimeException("Failed to upload image: {$image->getClientOriginalName()}");
+                    }
+                } elseif ($image instanceof UploadedFile) {
+                    Log::warning('Invalid uploaded file', [
+                        'index' => $index,
+                        'error' => $image->getError(),
+                        'error_message' => $image->getErrorMessage(),
+                    ]);
+                }
             }
+            
+            return $uploadedImages;
+            
+        } catch (\Exception $e) {
+            // Clean up any images that were uploaded before the error
+            if (!empty($uploadedPaths)) {
+                Log::warning('Cleaning up partial image uploads due to error');
+                $this->deleteImages($uploadedPaths);
+            }
+            
+            throw new \RuntimeException('Image upload failed: ' . $e->getMessage(), 0, $e);
         }
-
-        return $uploadedImages;
     }
 
     /**
@@ -269,8 +358,17 @@ class PropertyService
     private function deleteImages(array $images): void
     {
         foreach ($images as $image) {
-            if (Storage::disk('public')->exists($image)) {
-                Storage::disk('public')->delete($image);
+            try {
+                if (Storage::disk('public')->exists($image)) {
+                    Storage::disk('public')->delete($image);
+                    Log::debug('Image deleted', ['path' => $image]);
+                }
+            } catch (\Exception $e) {
+                // Log but don't throw - deletion failures shouldn't stop the process
+                Log::error('Failed to delete image', [
+                    'path' => $image,
+                    'error' => $e->getMessage(),
+                ]);
             }
         }
     }

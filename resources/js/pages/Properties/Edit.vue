@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
 import { type BreadcrumbItem } from '@/types';
-import { Head, useForm } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { Head, useForm, router } from '@inertiajs/vue3';
+import { ref, computed } from 'vue';
 import { getCurrencySymbol } from '@/utils/currency';
 import SearchableSelect from '@/components/SearchableSelect.vue';
 
@@ -55,15 +55,59 @@ const isSubmitting = ref(false);
 const imagePreview = ref<string[]>([]);
 
 const submit = () => {
+    if (isSubmitting.value) return;
+    
     isSubmitting.value = true;
-    form.transform((data) => ({
-        ...data,
-        _method: 'PUT'
-    })).post(`/properties/${props.property.id}`, {
+    
+    // Create FormData for multipart/form-data submission
+    const formData = new FormData();
+    formData.append('_method', 'PUT');
+    
+    // Add all form fields
+    formData.append('category_id', form.category_id.toString());
+    formData.append('location_id', form.location_id.toString());
+    formData.append('property_name', form.property_name);
+    formData.append('status', form.status);
+    formData.append('is_featured', form.is_featured ? '1' : '0');
+    formData.append('replace_images', form.replace_images ? '1' : '0');
+    
+    // Add optional numeric fields
+    if (form.estimated_monthly && form.estimated_monthly !== '') {
+        formData.append('estimated_monthly', form.estimated_monthly.toString());
+    }
+    if (form.lot_area && form.lot_area !== '') {
+        formData.append('lot_area', form.lot_area.toString());
+    }
+    if (form.floor_area && form.floor_area !== '') {
+        formData.append('floor_area', form.floor_area.toString());
+    }
+    
+    // Add details if present
+    if (form.details && form.details.trim() !== '') {
+        formData.append('details', form.details);
+    }
+    
+    // Add new images if any
+    if (form.images && form.images.length > 0) {
+        form.images.forEach((image, index) => {
+            formData.append(`images[${index}]`, image);
+        });
+    }
+    
+    // Use router.post for FormData submission
+    router.post(`/properties/${props.property.id}`, formData, {
         forceFormData: true,
-        onSuccess: () => {},
-        onError: () => { isSubmitting.value = false; },
-        onFinish: () => { isSubmitting.value = false; },
+        preserveScroll: true,
+        onSuccess: () => {
+            console.log('Property updated successfully');
+        },
+        onError: (errors) => {
+            console.error('Validation errors:', errors);
+            isSubmitting.value = false;
+        },
+        onFinish: () => {
+            isSubmitting.value = false;
+        },
     });
 };
 
@@ -75,6 +119,32 @@ const handleImageUpload = (event: Event) => {
     
     if (files) {
         const newFiles = Array.from(files);
+        
+        // Calculate existing images count
+        const existingCount = form.replace_images ? 0 : (props.property.images?.length || 0);
+        const totalImages = existingCount + form.images.length + newFiles.length;
+        
+        if (totalImages > 10) {
+            alert(`Maximum 10 images allowed. Current: ${existingCount + form.images.length}, adding: ${newFiles.length}`);
+            return;
+        }
+        
+        // Validate file size (5MB max)
+        const maxSize = 5 * 1024 * 1024;
+        const invalidFiles = newFiles.filter(file => file.size > maxSize);
+        if (invalidFiles.length > 0) {
+            alert('Some images exceed the 5MB size limit.');
+            return;
+        }
+        
+        // Validate file type
+        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+        const invalidTypes = newFiles.filter(file => !allowedTypes.includes(file.type));
+        if (invalidTypes.length > 0) {
+            alert('Only JPEG, PNG, GIF, and WebP formats allowed.');
+            return;
+        }
+        
         form.images = [...form.images, ...newFiles];
         
         newFiles.forEach(file => {
@@ -86,6 +156,8 @@ const handleImageUpload = (event: Event) => {
             };
             reader.readAsDataURL(file);
         });
+        
+        target.value = '';
     }
 };
 
@@ -99,6 +171,26 @@ const formatDate = (dateString: string) => {
         year: 'numeric', month: 'long', day: 'numeric',
         hour: '2-digit', minute: '2-digit'
     });
+};
+
+// Computed property to check if form is valid
+const isFormValid = computed(() => {
+    return (
+        form.property_name.trim() !== '' &&
+        form.category_id !== null &&
+        form.location_id !== null &&
+        form.status !== ''
+    );
+});
+
+// Get image URL helper
+const getImageUrl = (path: string) => {
+    // Handle both relative and absolute URLs
+    if (path.startsWith('http://') || path.startsWith('https://')) {
+        return path;
+    }
+    // Use asset helper for relative paths - works with both HTTP and HTTPS
+    return `/storage/${path}`;
 };
 </script>
 
