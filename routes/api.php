@@ -6,7 +6,6 @@ use App\Http\Controllers\Admin\SiteSettingsController;
 use App\Http\Controllers\Api\ClientAuthController;
 use App\Http\Controllers\Api\PropertyApiController;
 use App\Http\Controllers\Api\SiteSettingApiController;
-use App\Http\Controllers\Api\ChatbotController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -50,12 +49,6 @@ Route::prefix('properties')->middleware(['api', 'throttle:60,1'])->group(functio
     Route::get('/featured-properties', [PropertyApiController::class, 'getFeaturedProperties']);
     Route::get('/stats-properties', [PropertyApiController::class, 'getPropertyStats']);
     Route::get('/statuses-properties', [PropertyApiController::class, 'getAvailableStatuses']);
-});
-
-// Chatbot stream endpoint (uses client guard if available but allows guests with session id)
-Route::middleware(['throttle:60,1'])->group(function () {
-    Route::post('/chatbot/stream', [ChatbotController::class, 'stream']);
-    Route::get('/chatbot/history', [ChatbotController::class, 'history']);
 });
 
 // Site Settings API Routes - Public read access with rate limiting, protected write access
