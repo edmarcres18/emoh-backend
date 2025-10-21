@@ -142,9 +142,17 @@ class ChatbotAIService
                 'temperature' => 0.7,
             ];
 
-            $response = Http::withHeaders($headers)
-                ->timeout(30)
-                ->post($this->apiBaseUrl, $requestBody);
+            // Make API request with proper SSL handling
+            $httpClient = Http::withHeaders($headers)
+                ->timeout(30);
+            
+            // In development, you might need to disable SSL verification
+            // Remove this in production for security
+            if (env('APP_ENV') === 'local' && env('DISABLE_SSL_VERIFY', false)) {
+                $httpClient = $httpClient->withoutVerifying();
+            }
+            
+            $response = $httpClient->post($this->apiBaseUrl, $requestBody);
 
             if ($response->successful()) {
                 $data = $response->json();
@@ -164,11 +172,20 @@ class ChatbotAIService
             Log::warning($this->apiProvider . ' API request failed', [
                 'provider' => $this->apiProvider,
                 'status' => $response->status(),
-                'body' => $response->body()
+                'body' => substr($response->body(), 0, 500), // Limit log size
+                'url' => $this->apiBaseUrl,
             ]);
 
+        } catch (\Illuminate\Http\Client\ConnectionException $e) {
+            Log::error($this->apiProvider . ' connection error: ' . $e->getMessage(), [
+                'provider' => $this->apiProvider,
+                'message' => 'Network or SSL connection failed',
+            ]);
         } catch (\Exception $e) {
-            Log::error($this->apiProvider . ' API error: ' . $e->getMessage());
+            Log::error($this->apiProvider . ' API error: ' . $e->getMessage(), [
+                'provider' => $this->apiProvider,
+                'error_type' => get_class($e),
+            ]);
         }
 
         // Fallback to rule-based if AI API fails
