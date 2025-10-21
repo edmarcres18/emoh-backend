@@ -50,76 +50,83 @@ Route::prefix('properties')->middleware(['api'])->group(function () {
     Route::get('/statuses-properties', [PropertyApiController::class, 'getAvailableStatuses']);
 });
 
-// Site Settings API Routes
+// Site Settings API Routes - Public read access with rate limiting, protected write access
 Route::prefix('site-settings')->group(function () {
-    // Get all settings
-    Route::get('/all', [SiteSettingApiController::class, 'getAllSettings']);
-    
-    // Site name
-    Route::get('/site-name', [SiteSettingApiController::class, 'getSiteName']);
-    Route::put('/site-name', [SiteSettingApiController::class, 'updateSiteName']);
-    
-    // Site logo
-    Route::get('/site-logo', [SiteSettingApiController::class, 'getSiteLogo']);
-    Route::put('/site-logo', [SiteSettingApiController::class, 'updateSiteLogo']);
-    
-    // Site favicon
-    Route::get('/site-favicon', [SiteSettingApiController::class, 'getSiteFavicon']);
-    Route::put('/site-favicon', [SiteSettingApiController::class, 'updateSiteFavicon']);
-    
-    // Site description
-    Route::get('/site-description', [SiteSettingApiController::class, 'getSiteDescription']);
-    Route::put('/site-description', [SiteSettingApiController::class, 'updateSiteDescription']);
-    
-    // Maintenance mode
-    Route::get('/maintenance-mode', [SiteSettingApiController::class, 'getMaintenanceMode']);
-    Route::put('/maintenance-mode', [SiteSettingApiController::class, 'updateMaintenanceMode']);
-    
-    // Contact email
-    Route::get('/contact-email', [SiteSettingApiController::class, 'getContactEmail']);
-    Route::put('/contact-email', [SiteSettingApiController::class, 'updateContactEmail']);
-    
-    // Contact phone
-    Route::get('/contact-phone', [SiteSettingApiController::class, 'getContactPhone']);
-    Route::put('/contact-phone', [SiteSettingApiController::class, 'updateContactPhone']);
-    
-    // Phone number
-    Route::get('/phone-number', [SiteSettingApiController::class, 'getPhoneNumber']);
-    Route::put('/phone-number', [SiteSettingApiController::class, 'updatePhoneNumber']);
-    
-    // Address
-    Route::get('/address', [SiteSettingApiController::class, 'getAddress']);
-    Route::put('/address', [SiteSettingApiController::class, 'updateAddress']);
-    
-    // Social media - Facebook
-    Route::get('/social-facebook', [SiteSettingApiController::class, 'getSocialFacebook']);
-    Route::put('/social-facebook', [SiteSettingApiController::class, 'updateSocialFacebook']);
-    
-    // Social media - Twitter
-    Route::get('/social-twitter', [SiteSettingApiController::class, 'getSocialTwitter']);
-    Route::put('/social-twitter', [SiteSettingApiController::class, 'updateSocialTwitter']);
-    
-    // Social media - Instagram
-    Route::get('/social-instagram', [SiteSettingApiController::class, 'getSocialInstagram']);
-    Route::put('/social-instagram', [SiteSettingApiController::class, 'updateSocialInstagram']);
-    
-    // Social media - LinkedIn
-    Route::get('/social-linkedin', [SiteSettingApiController::class, 'getSocialLinkedin']);
-    Route::put('/social-linkedin', [SiteSettingApiController::class, 'updateSocialLinkedin']);
-    
-    // Social media - Telegram
-    Route::get('/social-telegram', [SiteSettingApiController::class, 'getSocialTelegram']);
-    Route::put('/social-telegram', [SiteSettingApiController::class, 'updateSocialTelegram']);
-    
-    // Social media - Viber
-    Route::get('/social-viber', [SiteSettingApiController::class, 'getSocialViber']);
-    Route::put('/social-viber', [SiteSettingApiController::class, 'updateSocialViber']);
-    
-    // Social media - WhatsApp
-    Route::get('/social-whatsapp', [SiteSettingApiController::class, 'getSocialWhatsapp']);
-    Route::put('/social-whatsapp', [SiteSettingApiController::class, 'updateSocialWhatsapp']);
-    
-    // Google Analytics
-    Route::get('/google-analytics-id', [SiteSettingApiController::class, 'getGoogleAnalyticsId']);
-    Route::put('/google-analytics-id', [SiteSettingApiController::class, 'updateGoogleAnalyticsId']);
+    // Public GET routes with rate limiting (60 requests per minute)
+    Route::middleware(['throttle:60,1'])->group(function () {
+        // Get all settings
+        Route::get('/all', [SiteSettingApiController::class, 'getAllSettings']);
+        
+        // Site name
+        Route::get('/site-name', [SiteSettingApiController::class, 'getSiteName']);
+        
+        // Site logo
+        Route::get('/site-logo', [SiteSettingApiController::class, 'getSiteLogo']);
+        
+        // Site favicon
+        Route::get('/site-favicon', [SiteSettingApiController::class, 'getSiteFavicon']);
+        
+        // Site description
+        Route::get('/site-description', [SiteSettingApiController::class, 'getSiteDescription']);
+        
+        // Maintenance mode
+        Route::get('/maintenance-mode', [SiteSettingApiController::class, 'getMaintenanceMode']);
+        
+        // Contact email
+        Route::get('/contact-email', [SiteSettingApiController::class, 'getContactEmail']);
+        
+        // Contact phone
+        Route::get('/contact-phone', [SiteSettingApiController::class, 'getContactPhone']);
+        
+        // Phone number
+        Route::get('/phone-number', [SiteSettingApiController::class, 'getPhoneNumber']);
+        
+        // Address
+        Route::get('/address', [SiteSettingApiController::class, 'getAddress']);
+        
+        // Social media - Facebook
+        Route::get('/social-facebook', [SiteSettingApiController::class, 'getSocialFacebook']);
+        
+        // Social media - Twitter
+        Route::get('/social-twitter', [SiteSettingApiController::class, 'getSocialTwitter']);
+        
+        // Social media - Instagram
+        Route::get('/social-instagram', [SiteSettingApiController::class, 'getSocialInstagram']);
+        
+        // Social media - LinkedIn
+        Route::get('/social-linkedin', [SiteSettingApiController::class, 'getSocialLinkedin']);
+        
+        // Social media - Telegram
+        Route::get('/social-telegram', [SiteSettingApiController::class, 'getSocialTelegram']);
+        
+        // Social media - Viber
+        Route::get('/social-viber', [SiteSettingApiController::class, 'getSocialViber']);
+        
+        // Social media - WhatsApp
+        Route::get('/social-whatsapp', [SiteSettingApiController::class, 'getSocialWhatsapp']);
+        
+        // Google Analytics
+        Route::get('/google-analytics-id', [SiteSettingApiController::class, 'getGoogleAnalyticsId']);
+    });
+
+    // Protected PUT routes - Require authentication (admin only)
+    Route::middleware(['auth:sanctum', 'throttle:30,1'])->group(function () {
+        Route::put('/site-name', [SiteSettingApiController::class, 'updateSiteName']);
+        Route::put('/site-logo', [SiteSettingApiController::class, 'updateSiteLogo']);
+        Route::put('/site-favicon', [SiteSettingApiController::class, 'updateSiteFavicon']);
+        Route::put('/site-description', [SiteSettingApiController::class, 'updateSiteDescription']);
+        Route::put('/maintenance-mode', [SiteSettingApiController::class, 'updateMaintenanceMode']);
+        Route::put('/contact-email', [SiteSettingApiController::class, 'updateContactEmail']);
+        Route::put('/contact-phone', [SiteSettingApiController::class, 'updateContactPhone']);
+        Route::put('/phone-number', [SiteSettingApiController::class, 'updatePhoneNumber']);
+        Route::put('/address', [SiteSettingApiController::class, 'updateAddress']);
+        Route::put('/social-facebook', [SiteSettingApiController::class, 'updateSocialFacebook']);
+        Route::put('/social-twitter', [SiteSettingApiController::class, 'updateSocialTwitter']);
+        Route::put('/social-instagram', [SiteSettingApiController::class, 'updateSocialInstagram']);
+        Route::put('/social-linkedin', [SiteSettingApiController::class, 'updateSocialLinkedin']);
+        Route::put('/social-telegram', [SiteSettingApiController::class, 'updateSocialTelegram']);
+        Route::put('/social-viber', [SiteSettingApiController::class, 'updateSocialViber']);
+        Route::put('/social-whatsapp', [SiteSettingApiController::class, 'updateSocialWhatsapp']);
+        Route::put('/google-analytics-id', [SiteSettingApiController::class, 'updateGoogleAnalyticsId']);
+    });
 });
