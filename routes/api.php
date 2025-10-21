@@ -4,6 +4,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Admin\SiteSettingsController;
 use App\Http\Controllers\Api\ClientAuthController;
+use App\Http\Controllers\Api\ChatController;
 use App\Http\Controllers\Api\PropertyApiController;
 use App\Http\Controllers\Api\SiteSettingApiController;
 
@@ -38,6 +39,13 @@ Route::prefix('client')->group(function () {
 
         // Client rental properties routes
         Route::get('/my-rentals', [ClientAuthController::class, 'getClientRentals']);
+
+        // Chat/Messaging routes
+        Route::get('/chat/conversation', [ChatController::class, 'getOrCreateConversation']);
+        Route::get('/chat/conversations', [ChatController::class, 'getConversations']);
+        Route::get('/chat/conversation/{conversationId}/messages', [ChatController::class, 'getMessages']);
+        Route::post('/chat/message', [ChatController::class, 'sendMessage'])->middleware('throttle:30,1');
+        Route::get('/chat/conversation/{conversationId}/poll', [ChatController::class, 'pollMessages']);
     });
 });
 
