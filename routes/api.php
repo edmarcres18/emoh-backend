@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\SiteSettingsController;
 use App\Http\Controllers\Api\ClientAuthController;
 use App\Http\Controllers\Api\PropertyApiController;
 use App\Http\Controllers\Api\SiteSettingApiController;
+use App\Http\Controllers\Api\InquiryController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -49,6 +50,21 @@ Route::prefix('properties')->middleware(['api', 'throttle:60,1'])->group(functio
     Route::get('/featured-properties', [PropertyApiController::class, 'getFeaturedProperties']);
     Route::get('/stats-properties', [PropertyApiController::class, 'getPropertyStats']);
     Route::get('/statuses-properties', [PropertyApiController::class, 'getAvailableStatuses']);
+});
+
+// Inquiry API Routes
+Route::prefix('inquiries')->group(function () {
+    // Public routes with rate limiting
+    Route::middleware(['throttle:30,1'])->group(function () {
+        Route::get('/captcha/generate', [InquiryController::class, 'generateCaptcha']);
+        Route::get('/check-auth', [InquiryController::class, 'checkAuth']);
+    });
+    
+    // Protected routes - requires authentication
+    Route::middleware(['auth:sanctum', 'throttle:10,1'])->group(function () {
+        Route::post('/submit', [InquiryController::class, 'submitInquiry']);
+        Route::get('/my-inquiries', [InquiryController::class, 'getMyInquiries']);
+    });
 });
 
 // Site Settings API Routes - Public read access with rate limiting, protected write access
