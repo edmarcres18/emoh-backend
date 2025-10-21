@@ -6,7 +6,6 @@ use App\Http\Controllers\Admin\SiteSettingsController;
 use App\Http\Controllers\Api\ClientAuthController;
 use App\Http\Controllers\Api\PropertyApiController;
 use App\Http\Controllers\Api\SiteSettingApiController;
-use App\Http\Controllers\Api\ChatbotController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -130,20 +129,5 @@ Route::prefix('site-settings')->group(function () {
         Route::put('/social-viber', [SiteSettingApiController::class, 'updateSocialViber']);
         Route::put('/social-whatsapp', [SiteSettingApiController::class, 'updateSocialWhatsapp']);
         Route::put('/google-analytics-id', [SiteSettingApiController::class, 'updateGoogleAnalyticsId']);
-    });
-});
-
-// Chatbot API Routes
-Route::prefix('chatbot')->middleware(['throttle:60,1'])->group(function () {
-    // Public routes - Allow anonymous users to chat
-    Route::post('/chat', [ChatbotController::class, 'chat']);
-    Route::post('/chat-stream', [ChatbotController::class, 'chatStream']);
-    Route::post('/history', [ChatbotController::class, 'getHistory']);
-    Route::get('/validate-config', [ChatbotController::class, 'validateConfig']);
-    
-    // Protected routes - Require client authentication
-    Route::middleware('auth:client')->group(function () {
-        Route::get('/sessions', [ChatbotController::class, 'getSessions']);
-        Route::delete('/history', [ChatbotController::class, 'clearHistory']);
     });
 });
