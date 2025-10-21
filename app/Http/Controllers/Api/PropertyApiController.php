@@ -331,7 +331,7 @@ class PropertyApiController extends Controller
                     $query->select('id', 'property_name', 'estimated_monthly', 'images', 'details', 'status', 'category_id', 'location_id', 'lot_area', 'floor_area');
                 },
                 'property.category' => function ($query) {
-                    $query->select('id', 'category_name', 'description');
+                    $query->select('id', 'name', 'description');
                 },
                 'property.location' => function ($query) {
                     $query->select('id', 'location_name', 'location_address');
@@ -393,7 +393,7 @@ class PropertyApiController extends Controller
                         'floor_area' => $rental->property->floor_area ?? null,
                         'category' => [
                             'id' => $rental->property->category->id ?? null,
-                            'name' => $rental->property->category->category_name ?? null,
+                            'name' => $rental->property->category->name ?? null,
                             'description' => $rental->property->category->description ?? null,
                         ],
                         'location' => [
