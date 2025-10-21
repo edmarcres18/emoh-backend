@@ -30,15 +30,22 @@ return Application::configure(basePath: dirname(__DIR__))
             'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
             'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
             'force.json' => \App\Http\Middleware\ForceJsonResponse::class,
+            'api.error' => \App\Http\Middleware\ApiErrorHandler::class,
+            'api.security' => \App\Http\Middleware\ApiSecurity::class,
+            'api.sanitize' => \App\Http\Middleware\InputSanitization::class,
+            'rate.limit' => \App\Http\Middleware\EnhancedRateLimiting::class,
         ]);
 
         // Apply JSON middleware to API routes
         $middleware->api(prepend: [
             HandleCors::class,
+            \App\Http\Middleware\ApiSecurity::class,
+            \App\Http\Middleware\InputSanitization::class,
         ]);
-        
+
         $middleware->api(append: [
             \App\Http\Middleware\ForceJsonResponse::class,
+            \App\Http\Middleware\ApiErrorHandler::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
