@@ -684,14 +684,6 @@ class ClientAuthController extends Controller
     /**
      * Get authenticated client's rental properties with detailed information
      * 
-     * This endpoint fetches all rentals for the authenticated client including:
-     * - Complete property details (name, areas, status)
-     * - Property images array (explicitly selected and validated)
-     * - Category and location information
-     * - Rental contract details (dates, rent, deposit, status)
-     * - Calculated fields (remaining days, duration, remarks)
-     * - Terms, conditions, notes, and documents
-     * 
      * @param Request $request
      * @return JsonResponse
      */
@@ -728,16 +720,9 @@ class ClientAuthController extends Controller
         }
 
         try {
-            // Build query with proper relationships and ensure images are loaded
-            $query = Rented::with([
-                'property' => function ($query) {
-                    $query->select('id', 'category_id', 'location_id', 'property_name', 
-                                  'estimated_monthly', 'images', 'details', 'status', 
-                                  'lot_area', 'floor_area', 'is_featured');
-                },
-                'property.category',
-                'property.location'
-            ])->where('client_id', $client->id);
+            // Build query with proper relationships
+            $query = Rented::with(['property.category', 'property.location'])
+                ->where('client_id', $client->id);
 
             // Apply status filter
             $status = $request->input('status', 'all');
@@ -789,23 +774,13 @@ class ClientAuthController extends Controller
 
             // Transform data to match frontend expectations with only fillable attributes
             $transformedRentals = $rentals->getCollection()->map(function ($rental) {
-                // Ensure images is always an array and filter out null/empty values
-                $propertyImages = $rental->property->images ?? [];
-                if (!is_array($propertyImages)) {
-                    $propertyImages = [];
-                }
-                // Filter out any null, empty, or invalid image URLs
-                $propertyImages = array_values(array_filter($propertyImages, function($image) {
-                    return !empty($image) && is_string($image);
-                }));
-
                 return [
                     'id' => $rental->id,
                     'property' => [
                         'id' => $rental->property->id,
                         'name' => $rental->property->property_name,
                         'estimated_monthly' => $rental->property->estimated_monthly,
-                        'images' => $propertyImages,
+                        'images' => $rental->property->images ?? [],
                         'details' => $rental->property->details,
                         'status' => $rental->property->status,
                         'lot_area' => $rental->property->lot_area,
