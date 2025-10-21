@@ -10,6 +10,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Laravel\Socialite\Facades\Socialite;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\ClientOTPVerification;
@@ -774,11 +775,21 @@ class ClientAuthController extends Controller
 
             // Transform data to match frontend expectations with only fillable attributes
             $transformedRentals = $rentals->getCollection()->map(function ($rental) {
-                // Ensure images is always an array
+                // Ensure images is always an array and convert storage paths to URLs
                 $propertyImages = $rental->property->images;
                 if (!is_array($propertyImages)) {
                     $propertyImages = $propertyImages ? [$propertyImages] : [];
                 }
+                
+                // Convert storage paths to accessible URLs
+                $imageUrls = array_map(function ($imagePath) {
+                    // If path already starts with http/https, return as is
+                    if (str_starts_with($imagePath, 'http://') || str_starts_with($imagePath, 'https://')) {
+                        return $imagePath;
+                    }
+                    // Convert storage path to URL
+                    return \Storage::disk('public')->url($imagePath);
+                }, $propertyImages);
                 
                 return [
                     'id' => $rental->id,
@@ -786,7 +797,7 @@ class ClientAuthController extends Controller
                         'id' => $rental->property->id,
                         'name' => $rental->property->property_name,
                         'estimated_monthly' => $rental->property->estimated_monthly,
-                        'images' => $propertyImages, // Always an array
+                        'images' => $imageUrls, // Always an array with full URLs
                         'details' => $rental->property->details,
                         'status' => $rental->property->status,
                         'lot_area' => $rental->property->lot_area,
