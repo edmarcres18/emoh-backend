@@ -127,11 +127,11 @@ const removeImage = (index: number) => {
                             </label>
                             <input
                                 id="property_name"
+                                name="property_name"
                                 v-model="form.property_name"
                                 type="text"
-                                name="property_name"
-                                autocomplete="off"
                                 placeholder="Enter property name..."
+                                autocomplete="off"
                                 :class="[
                                     'block w-full px-4 py-3 border rounded-lg shadow-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500',
                                     form.errors.property_name 
@@ -151,10 +151,11 @@ const removeImage = (index: number) => {
 
                         <!-- Category -->
                         <div>
-                            <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                            <label for="category_select" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
                                 Category <span class="text-red-500">*</span>
                             </label>
                             <SearchableSelect
+                                id="category_select"
                                 v-model="form.category_id"
                                 :options="categories"
                                 primary-key="name"
@@ -162,8 +163,8 @@ const removeImage = (index: number) => {
                                 placeholder="Select a category..."
                                 :error="form.errors.category_id"
                                 :disabled="isSubmitting"
-                                name="category_id"
                             />
+                            <input type="hidden" name="category_id" :value="form.category_id" />
                             <div v-if="form.errors.category_id" class="mt-2 flex items-center gap-2 text-sm text-red-600 dark:text-red-400">
                                 <svg class="h-4 w-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -174,10 +175,11 @@ const removeImage = (index: number) => {
 
                         <!-- Location -->
                         <div>
-                            <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                            <label for="location_select" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
                                 Location <span class="text-red-500">*</span>
                             </label>
                             <SearchableSelect
+                                id="location_select"
                                 v-model="form.location_id"
                                 :options="locations"
                                 primary-key="name"
@@ -185,8 +187,8 @@ const removeImage = (index: number) => {
                                 placeholder="Select a location..."
                                 :error="form.errors.location_id"
                                 :disabled="isSubmitting"
-                                name="location_id"
                             />
+                            <input type="hidden" name="location_id" :value="form.location_id" />
                             <div v-if="form.errors.location_id" class="mt-2 flex items-center gap-2 text-sm text-red-600 dark:text-red-400">
                                 <svg class="h-4 w-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -205,12 +207,13 @@ const removeImage = (index: number) => {
                             </label>
                             <input
                                 id="estimated_monthly"
+                                name="estimated_monthly"
                                 v-model="form.estimated_monthly"
                                 type="number"
-                                name="estimated_monthly"
                                 step="0.01"
                                 min="0"
                                 placeholder="0.00"
+                                autocomplete="off"
                                 :class="[
                                     'block w-full px-4 py-3 border rounded-lg shadow-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500',
                                     form.errors.estimated_monthly 
@@ -234,12 +237,13 @@ const removeImage = (index: number) => {
                             </label>
                             <input
                                 id="lot_area"
+                                name="lot_area"
                                 v-model="form.lot_area"
                                 type="number"
-                                name="lot_area"
                                 step="0.01"
                                 min="0"
                                 placeholder="0.00"
+                                autocomplete="off"
                                 :class="[
                                     'block w-full px-4 py-3 border rounded-lg shadow-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500',
                                     form.errors.lot_area 
@@ -263,12 +267,13 @@ const removeImage = (index: number) => {
                             </label>
                             <input
                                 id="floor_area"
+                                name="floor_area"
                                 v-model="form.floor_area"
                                 type="number"
-                                name="floor_area"
                                 step="0.01"
                                 min="0"
                                 placeholder="0.00"
+                                autocomplete="off"
                                 :class="[
                                     'block w-full px-4 py-3 border rounded-lg shadow-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500',
                                     form.errors.floor_area 
@@ -290,10 +295,11 @@ const removeImage = (index: number) => {
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <!-- Status -->
                         <div>
-                            <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                            <label for="status_select" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
                                 Status <span class="text-red-500">*</span>
                             </label>
                             <SearchableSelect
+                                id="status_select"
                                 v-model="form.status"
                                 :options="statusOptions"
                                 primary-key="label"
@@ -301,8 +307,8 @@ const removeImage = (index: number) => {
                                 placeholder="Select status..."
                                 :error="form.errors.status"
                                 :disabled="isSubmitting"
-                                name="status"
                             />
+                            <input type="hidden" name="status" :value="form.status" />
                             <div v-if="form.errors.status" class="mt-2 flex items-center gap-2 text-sm text-red-600 dark:text-red-400">
                                 <svg class="h-4 w-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -313,12 +319,13 @@ const removeImage = (index: number) => {
 
                         <!-- Featured -->
                         <div>
-                            <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                            <span class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
                                 Featured Property
-                            </label>
+                            </span>
                             <div class="flex items-center">
                                 <input
                                     id="is_featured"
+                                    name="is_featured"
                                     v-model="form.is_featured"
                                     type="checkbox"
                                     class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 dark:border-gray-600 rounded"
@@ -341,10 +348,11 @@ const removeImage = (index: number) => {
                         </label>
                         <textarea
                             id="details"
-                            v-model="form.details"
                             name="details"
+                            v-model="form.details"
                             rows="4"
                             placeholder="Enter property details, lease terms, amenities, etc..."
+                            autocomplete="off"
                             :class="[
                                 'block w-full px-4 py-3 border rounded-lg shadow-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none',
                                 form.errors.details 
@@ -363,9 +371,9 @@ const removeImage = (index: number) => {
 
                     <!-- Images Upload -->
                     <div>
-                        <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                        <span class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
                             Property Images
-                        </label>
+                        </span>
                         <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 dark:border-gray-600 border-dashed rounded-lg hover:border-gray-400 dark:hover:border-gray-500 transition-colors">
                             <div class="space-y-1 text-center">
                                 <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
