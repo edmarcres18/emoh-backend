@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\SiteSettingsController;
 use App\Http\Controllers\Api\ClientAuthController;
 use App\Http\Controllers\Api\PropertyApiController;
 use App\Http\Controllers\Api\SiteSettingApiController;
+use App\Http\Controllers\Api\ChatbotController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -51,61 +52,67 @@ Route::prefix('properties')->middleware(['api', 'throttle:60,1'])->group(functio
     Route::get('/statuses-properties', [PropertyApiController::class, 'getAvailableStatuses']);
 });
 
+// Chatbot stream endpoint (uses client guard if available but allows guests with session id)
+Route::middleware(['throttle:60,1'])->group(function () {
+    Route::post('/chatbot/stream', [ChatbotController::class, 'stream']);
+    Route::get('/chatbot/history', [ChatbotController::class, 'history']);
+});
+
 // Site Settings API Routes - Public read access with rate limiting, protected write access
 Route::prefix('site-settings')->group(function () {
     // Public GET routes with rate limiting (60 requests per minute)
     Route::middleware(['throttle:60,1'])->group(function () {
         // Get all settings
         Route::get('/all', [SiteSettingApiController::class, 'getAllSettings']);
-        
+
         // Site name
         Route::get('/site-name', [SiteSettingApiController::class, 'getSiteName']);
-        
+
         // Site logo
         Route::get('/site-logo', [SiteSettingApiController::class, 'getSiteLogo']);
-        
+
         // Site favicon
         Route::get('/site-favicon', [SiteSettingApiController::class, 'getSiteFavicon']);
-        
+
         // Site description
         Route::get('/site-description', [SiteSettingApiController::class, 'getSiteDescription']);
-        
+
         // Maintenance mode
         Route::get('/maintenance-mode', [SiteSettingApiController::class, 'getMaintenanceMode']);
-        
+
         // Contact email
         Route::get('/contact-email', [SiteSettingApiController::class, 'getContactEmail']);
-        
+
         // Contact phone
         Route::get('/contact-phone', [SiteSettingApiController::class, 'getContactPhone']);
-        
+
         // Phone number
         Route::get('/phone-number', [SiteSettingApiController::class, 'getPhoneNumber']);
-        
+
         // Address
         Route::get('/address', [SiteSettingApiController::class, 'getAddress']);
-        
+
         // Social media - Facebook
         Route::get('/social-facebook', [SiteSettingApiController::class, 'getSocialFacebook']);
-        
+
         // Social media - Twitter
         Route::get('/social-twitter', [SiteSettingApiController::class, 'getSocialTwitter']);
-        
+
         // Social media - Instagram
         Route::get('/social-instagram', [SiteSettingApiController::class, 'getSocialInstagram']);
-        
+
         // Social media - LinkedIn
         Route::get('/social-linkedin', [SiteSettingApiController::class, 'getSocialLinkedin']);
-        
+
         // Social media - Telegram
         Route::get('/social-telegram', [SiteSettingApiController::class, 'getSocialTelegram']);
-        
+
         // Social media - Viber
         Route::get('/social-viber', [SiteSettingApiController::class, 'getSocialViber']);
-        
+
         // Social media - WhatsApp
         Route::get('/social-whatsapp', [SiteSettingApiController::class, 'getSocialWhatsapp']);
-        
+
         // Google Analytics
         Route::get('/google-analytics-id', [SiteSettingApiController::class, 'getGoogleAnalyticsId']);
     });
