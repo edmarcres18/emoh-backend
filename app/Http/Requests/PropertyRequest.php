@@ -32,7 +32,7 @@ class PropertyRequest extends FormRequest
             'status' => 'required|in:Renovation,Rented,Available',
             'is_featured' => 'boolean',
             'images' => 'nullable|array|max:10',
-            'images.*' => 'image|mimes:jpeg,png,jpg,gif,webp|max:5120', // 5MB max per image
+            'images.*' => 'image|mimes:jpeg,png,jpg,gif,webp|max:102400', // 100MB max per image
             'replace_images' => 'boolean',
         ];
 
@@ -96,7 +96,7 @@ class PropertyRequest extends FormRequest
             'images.max' => 'You can upload a maximum of 10 images.',
             'images.*.image' => 'Each file must be a valid image.',
             'images.*.mimes' => 'Images must be in JPEG, PNG, JPG, GIF, or WebP format.',
-            'images.*.max' => 'Each image cannot exceed 5MB in size.',
+            'images.*.max' => 'Each image cannot exceed 100MB in size.',
         ];
     }
 

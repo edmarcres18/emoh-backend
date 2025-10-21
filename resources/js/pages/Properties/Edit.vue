@@ -129,11 +129,11 @@ const handleImageUpload = (event: Event) => {
             return;
         }
         
-        // Validate file size (5MB max)
-        const maxSize = 5 * 1024 * 1024;
+        // Validate file size (100MB max)
+        const maxSize = 100 * 1024 * 1024;
         const invalidFiles = newFiles.filter(file => file.size > maxSize);
         if (invalidFiles.length > 0) {
-            alert('Some images exceed the 5MB size limit.');
+            alert('Some images exceed the 100MB size limit.');
             return;
         }
         

@@ -130,11 +130,11 @@ const handleImageUpload = (event: Event) => {
             return;
         }
         
-        // Validate file size (5MB max per image)
-        const maxSize = 5 * 1024 * 1024; // 5MB in bytes
+        // Validate file size (100MB max per image)
+        const maxSize = 100 * 1024 * 1024; // 100MB in bytes
         const invalidFiles = newFiles.filter(file => file.size > maxSize);
         if (invalidFiles.length > 0) {
-            alert(`Some images exceed the 5MB size limit. Please choose smaller images.`);
+            alert(`Some images exceed the 100MB size limit. Please choose smaller images.`);
             return;
         }
         
@@ -460,7 +460,7 @@ const canAddMoreImages = computed(() => {
                                     </label>
                                     <p class="pl-1">or drag and drop</p>
                                 </div>
-                                <p class="text-xs text-gray-500 dark:text-gray-400">PNG, JPG, GIF up to 5MB each</p>
+                                <p class="text-xs text-gray-500 dark:text-gray-400">PNG, JPG, GIF, WebP up to 100MB each</p>
                             </div>
                         </div>
                         
