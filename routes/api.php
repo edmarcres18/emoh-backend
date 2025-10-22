@@ -72,6 +72,7 @@ Route::prefix('client')->group(function () {
 Route::prefix('properties')->middleware(['api', 'throttle:60,1'])->group(function () {
     // Public routes - no authentication required for property browsing
     Route::get('/all-properties', [PropertyApiController::class, 'getAllProperties']);
+    Route::get('/all-properties/{id}', [PropertyApiController::class, 'getPropertyById']);
     Route::get('/by-status-properties', [PropertyApiController::class, 'getPropertiesByStatus']);
     Route::get('/featured-properties', [PropertyApiController::class, 'getFeaturedProperties']);
     Route::get('/stats-properties', [PropertyApiController::class, 'getPropertyStats']);
