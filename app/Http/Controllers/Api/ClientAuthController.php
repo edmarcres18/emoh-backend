@@ -73,6 +73,7 @@ class ClientAuthController extends Controller
             'password' => Hash::make($request->password),
             'phone' => $request->phone,
             'is_active' => true, // New clients are active by default
+            'last_activity' => now(), // Initialize activity tracking
         ]);
 
         // Generate and send OTP for email verification (real-time)

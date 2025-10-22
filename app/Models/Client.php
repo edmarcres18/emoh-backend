@@ -36,6 +36,7 @@ class Client extends Authenticatable
         'last_login_ip',
         'browser_fingerprint',
         'last_successful_login_at',
+        'last_activity',
     ];
 
     /**
@@ -63,6 +64,7 @@ class Client extends Authenticatable
             'last_failed_login_at' => 'datetime',
             'locked_until' => 'datetime',
             'last_successful_login_at' => 'datetime',
+            'last_activity' => 'datetime',
             'password' => 'hashed',
         ];
     }
@@ -268,6 +270,7 @@ class Client extends Authenticatable
             'last_login_ip' => $ip,
             'browser_fingerprint' => $fingerprint,
             'last_successful_login_at' => now(),
+            'last_activity' => now(),
         ]);
     }
 
@@ -285,5 +288,38 @@ class Client extends Authenticatable
         }
 
         return max(0, now()->diffInMinutes($this->locked_until, false));
+    }
+
+    /**
+     * Check if session has timed out (1 day of inactivity)
+     */
+    public function hasSessionTimedOut(): bool
+    {
+        if (!$this->last_activity) {
+            return false;
+        }
+
+        // Session timeout after 24 hours (1 day) of inactivity
+        return $this->last_activity->addDay()->isPast();
+    }
+
+    /**
+     * Update last activity timestamp
+     */
+    public function updateLastActivity(): void
+    {
+        $this->update(['last_activity' => now()]);
+    }
+
+    /**
+     * Get hours since last activity
+     */
+    public function getHoursSinceLastActivity(): ?int
+    {
+        if (!$this->last_activity) {
+            return null;
+        }
+
+        return (int) now()->diffInHours($this->last_activity);
     }
 }
