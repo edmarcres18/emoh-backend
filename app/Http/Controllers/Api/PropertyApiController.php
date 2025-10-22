@@ -76,7 +76,7 @@ class PropertyApiController extends Controller
                     if (method_exists(Property::class, 'location')) {
                         $q->orWhereHas('location', function ($locationQuery) use ($searchTerm) {
                             $locationQuery->where('name', 'like', "%{$searchTerm}%")
-                                         ->orWhere('address', 'like', "%{$searchTerm}%");
+                                         ->orWhere('description', 'like', "%{$searchTerm}%");
                         });
                     }
                     
@@ -243,7 +243,7 @@ class PropertyApiController extends Controller
                     if (method_exists(Property::class, 'location')) {
                         $q->orWhereHas('location', function ($locationQuery) use ($searchTerm) {
                             $locationQuery->where('name', 'like', "%{$searchTerm}%")
-                                         ->orWhere('address', 'like', "%{$searchTerm}%");
+                                         ->orWhere('description', 'like', "%{$searchTerm}%");
                         });
                     }
                     
@@ -467,7 +467,7 @@ class PropertyApiController extends Controller
                     if (method_exists(Property::class, 'location')) {
                         $q->orWhereHas('location', function ($locationQuery) use ($searchTerm) {
                             $locationQuery->where('name', 'like', "%{$searchTerm}%")
-                                         ->orWhere('address', 'like', "%{$searchTerm}%");
+                                         ->orWhere('description', 'like', "%{$searchTerm}%");
                         });
                     }
                     
