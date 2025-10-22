@@ -58,32 +58,46 @@ class PropertyApiController extends Controller
             $sortBy = $request->get('sort_by', 'created_at');
             $sortOrder = $request->get('sort_order', 'desc');
 
-            $query = Property::with(['category', 'location'])
-                ->where('status', $request->status);
+            // Build query with eager loading to prevent N+1 issues
+            $query = Property::query();
+            
+            // Apply status filter
+            $query->where('status', $request->status);
 
             // Apply comprehensive search filter
             // Search across property name, details, location name, and category name
-            if ($search) {
-                $query->where(function ($q) use ($search) {
-                    $q->where('property_name', 'like', "%{$search}%")
-                      ->orWhere('details', 'like', "%{$search}%")
-                      ->orWhereHas('location', function ($locationQuery) use ($search) {
-                          $locationQuery->where('name', 'like', "%{$search}%")
-                                       ->orWhere('address', 'like', "%{$search}%");
-                      })
-                      ->orWhereHas('category', function ($categoryQuery) use ($search) {
-                          $categoryQuery->where('name', 'like', "%{$search}%");
-                      });
+            if ($search && !empty(trim($search))) {
+                $searchTerm = trim($search);
+                $query->where(function ($q) use ($searchTerm) {
+                    $q->where('property_name', 'like', "%{$searchTerm}%")
+                      ->orWhere('details', 'like', "%{$searchTerm}%");
+                    
+                    // Only search relationships if they exist
+                    if (method_exists(Property::class, 'location')) {
+                        $q->orWhereHas('location', function ($locationQuery) use ($searchTerm) {
+                            $locationQuery->where('name', 'like', "%{$searchTerm}%")
+                                         ->orWhere('address', 'like', "%{$searchTerm}%");
+                        });
+                    }
+                    
+                    if (method_exists(Property::class, 'category')) {
+                        $q->orWhereHas('category', function ($categoryQuery) use ($searchTerm) {
+                            $categoryQuery->where('name', 'like', "%{$searchTerm}%");
+                        });
+                    }
                 });
             }
 
             // Apply category filter (by ID or by name)
             if ($categoryId) {
                 $query->where('category_id', $categoryId);
-            } elseif ($category) {
-                $query->whereHas('category', function ($categoryQuery) use ($category) {
-                    $categoryQuery->where('name', 'like', "%{$category}%");
-                });
+            } elseif ($category && !empty(trim($category))) {
+                $categoryName = trim($category);
+                if (method_exists(Property::class, 'category')) {
+                    $query->whereHas('category', function ($categoryQuery) use ($categoryName) {
+                        $categoryQuery->where('name', 'like', "%{$categoryName}%");
+                    });
+                }
             }
 
             // Apply location filter
@@ -92,16 +106,28 @@ class PropertyApiController extends Controller
             }
 
             // Apply price range filter
-            if ($minPrice !== null) {
+            if ($minPrice !== null && is_numeric($minPrice)) {
                 $query->where('estimated_monthly', '>=', $minPrice);
             }
 
-            if ($maxPrice !== null) {
+            if ($maxPrice !== null && is_numeric($maxPrice)) {
                 $query->where('estimated_monthly', '<=', $maxPrice);
             }
 
-            // Apply sorting
+            // Apply sorting with validation
             $query->orderBy($sortBy, $sortOrder);
+            
+            // Load relationships only if they exist
+            $with = [];
+            if (method_exists(Property::class, 'category')) {
+                $with[] = 'category';
+            }
+            if (method_exists(Property::class, 'location')) {
+                $with[] = 'location';
+            }
+            if (!empty($with)) {
+                $query->with($with);
+            }
 
             $properties = $query->paginate($perPage);
 
@@ -121,12 +147,42 @@ class PropertyApiController extends Controller
                 ]
             ], 200);
 
+        } catch (\Illuminate\Database\QueryException $e) {
+            \Log::error('Database error in getPropertiesByStatus: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Database error occurred while retrieving properties',
+                'error' => config('app.debug') ? $e->getMessage() : 'Please try again later',
+                'data' => [
+                    'properties' => [],
+                    'pagination' => [
+                        'current_page' => 1,
+                        'per_page' => $request->get('per_page', 15),
+                        'total' => 0,
+                        'last_page' => 1,
+                        'from' => null,
+                        'to' => null,
+                    ]
+                ]
+            ], 200);
         } catch (\Exception $e) {
+            \Log::error('Error in getPropertiesByStatus: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to retrieve properties',
-                'error' => config('app.debug') ? $e->getMessage() : 'Internal server error'
-            ], 500);
+                'error' => config('app.debug') ? $e->getMessage() : 'An unexpected error occurred',
+                'data' => [
+                    'properties' => [],
+                    'pagination' => [
+                        'current_page' => 1,
+                        'per_page' => $request->get('per_page', 15),
+                        'total' => 0,
+                        'last_page' => 1,
+                        'from' => null,
+                        'to' => null,
+                    ]
+                ]
+            ], 200);
         }
     }
 
@@ -169,32 +225,46 @@ class PropertyApiController extends Controller
             $sortBy = $request->get('sort_by', 'created_at');
             $sortOrder = $request->get('sort_order', 'desc');
 
-            $query = Property::with(['category', 'location'])
-                ->where('is_featured', true);
+            // Build query with eager loading to prevent N+1 issues
+            $query = Property::query();
+            
+            // Apply featured filter
+            $query->where('is_featured', true);
 
             // Apply comprehensive search filter
             // Search across property name, details, location name, and category name
-            if ($search) {
-                $query->where(function ($q) use ($search) {
-                    $q->where('property_name', 'like', "%{$search}%")
-                      ->orWhere('details', 'like', "%{$search}%")
-                      ->orWhereHas('location', function ($locationQuery) use ($search) {
-                          $locationQuery->where('name', 'like', "%{$search}%")
-                                       ->orWhere('address', 'like', "%{$search}%");
-                      })
-                      ->orWhereHas('category', function ($categoryQuery) use ($search) {
-                          $categoryQuery->where('name', 'like', "%{$search}%");
-                      });
+            if ($search && !empty(trim($search))) {
+                $searchTerm = trim($search);
+                $query->where(function ($q) use ($searchTerm) {
+                    $q->where('property_name', 'like', "%{$searchTerm}%")
+                      ->orWhere('details', 'like', "%{$searchTerm}%");
+                    
+                    // Only search relationships if they exist
+                    if (method_exists(Property::class, 'location')) {
+                        $q->orWhereHas('location', function ($locationQuery) use ($searchTerm) {
+                            $locationQuery->where('name', 'like', "%{$searchTerm}%")
+                                         ->orWhere('address', 'like', "%{$searchTerm}%");
+                        });
+                    }
+                    
+                    if (method_exists(Property::class, 'category')) {
+                        $q->orWhereHas('category', function ($categoryQuery) use ($searchTerm) {
+                            $categoryQuery->where('name', 'like', "%{$searchTerm}%");
+                        });
+                    }
                 });
             }
 
             // Apply category filter (by ID or by name)
             if ($categoryId) {
                 $query->where('category_id', $categoryId);
-            } elseif ($category) {
-                $query->whereHas('category', function ($categoryQuery) use ($category) {
-                    $categoryQuery->where('name', 'like', "%{$category}%");
-                });
+            } elseif ($category && !empty(trim($category))) {
+                $categoryName = trim($category);
+                if (method_exists(Property::class, 'category')) {
+                    $query->whereHas('category', function ($categoryQuery) use ($categoryName) {
+                        $categoryQuery->where('name', 'like', "%{$categoryName}%");
+                    });
+                }
             }
 
             // Apply location filter
@@ -208,16 +278,28 @@ class PropertyApiController extends Controller
             }
 
             // Apply price range filter
-            if ($minPrice !== null) {
+            if ($minPrice !== null && is_numeric($minPrice)) {
                 $query->where('estimated_monthly', '>=', $minPrice);
             }
 
-            if ($maxPrice !== null) {
+            if ($maxPrice !== null && is_numeric($maxPrice)) {
                 $query->where('estimated_monthly', '<=', $maxPrice);
             }
 
-            // Apply sorting
+            // Apply sorting with validation
             $query->orderBy($sortBy, $sortOrder);
+            
+            // Load relationships only if they exist
+            $with = [];
+            if (method_exists(Property::class, 'category')) {
+                $with[] = 'category';
+            }
+            if (method_exists(Property::class, 'location')) {
+                $with[] = 'location';
+            }
+            if (!empty($with)) {
+                $query->with($with);
+            }
 
             $properties = $query->paginate($perPage);
 
@@ -237,12 +319,42 @@ class PropertyApiController extends Controller
                 ]
             ], 200);
 
+        } catch (\Illuminate\Database\QueryException $e) {
+            \Log::error('Database error in getFeaturedProperties: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Database error occurred while retrieving featured properties',
+                'error' => config('app.debug') ? $e->getMessage() : 'Please try again later',
+                'data' => [
+                    'properties' => [],
+                    'pagination' => [
+                        'current_page' => 1,
+                        'per_page' => $request->get('per_page', 15),
+                        'total' => 0,
+                        'last_page' => 1,
+                        'from' => null,
+                        'to' => null,
+                    ]
+                ]
+            ], 200);
         } catch (\Exception $e) {
+            \Log::error('Error in getFeaturedProperties: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to retrieve featured properties',
-                'error' => config('app.debug') ? $e->getMessage() : 'Internal server error'
-            ], 500);
+                'error' => config('app.debug') ? $e->getMessage() : 'An unexpected error occurred',
+                'data' => [
+                    'properties' => [],
+                    'pagination' => [
+                        'current_page' => 1,
+                        'per_page' => $request->get('per_page', 15),
+                        'total' => 0,
+                        'last_page' => 1,
+                        'from' => null,
+                        'to' => null,
+                    ]
+                ]
+            ], 200);
         }
     }
 
@@ -340,31 +452,43 @@ class PropertyApiController extends Controller
             $sortBy = $request->get('sort_by', 'created_at');
             $sortOrder = $request->get('sort_order', 'desc');
 
-            $query = Property::with(['category', 'location']);
+            // Build query with eager loading to prevent N+1 issues
+            $query = Property::query();
 
             // Apply comprehensive search filter
             // Search across property name, details, location name, and category name
-            if ($search) {
-                $query->where(function ($q) use ($search) {
-                    $q->where('property_name', 'like', "%{$search}%")
-                      ->orWhere('details', 'like', "%{$search}%")
-                      ->orWhereHas('location', function ($locationQuery) use ($search) {
-                          $locationQuery->where('name', 'like', "%{$search}%")
-                                       ->orWhere('address', 'like', "%{$search}%");
-                      })
-                      ->orWhereHas('category', function ($categoryQuery) use ($search) {
-                          $categoryQuery->where('name', 'like', "%{$search}%");
-                      });
+            if ($search && !empty(trim($search))) {
+                $searchTerm = trim($search);
+                $query->where(function ($q) use ($searchTerm) {
+                    $q->where('property_name', 'like', "%{$searchTerm}%")
+                      ->orWhere('details', 'like', "%{$searchTerm}%");
+                    
+                    // Only search relationships if they exist
+                    if (method_exists(Property::class, 'location')) {
+                        $q->orWhereHas('location', function ($locationQuery) use ($searchTerm) {
+                            $locationQuery->where('name', 'like', "%{$searchTerm}%")
+                                         ->orWhere('address', 'like', "%{$searchTerm}%");
+                        });
+                    }
+                    
+                    if (method_exists(Property::class, 'category')) {
+                        $q->orWhereHas('category', function ($categoryQuery) use ($searchTerm) {
+                            $categoryQuery->where('name', 'like', "%{$searchTerm}%");
+                        });
+                    }
                 });
             }
 
             // Apply category filter (by ID or by name)
             if ($categoryId) {
                 $query->where('category_id', $categoryId);
-            } elseif ($category) {
-                $query->whereHas('category', function ($categoryQuery) use ($category) {
-                    $categoryQuery->where('name', 'like', "%{$category}%");
-                });
+            } elseif ($category && !empty(trim($category))) {
+                $categoryName = trim($category);
+                if (method_exists(Property::class, 'category')) {
+                    $query->whereHas('category', function ($categoryQuery) use ($categoryName) {
+                        $categoryQuery->where('name', 'like', "%{$categoryName}%");
+                    });
+                }
             }
 
             // Apply location filter
@@ -378,16 +502,28 @@ class PropertyApiController extends Controller
             }
 
             // Apply price range filter
-            if ($minPrice !== null) {
+            if ($minPrice !== null && is_numeric($minPrice)) {
                 $query->where('estimated_monthly', '>=', $minPrice);
             }
 
-            if ($maxPrice !== null) {
+            if ($maxPrice !== null && is_numeric($maxPrice)) {
                 $query->where('estimated_monthly', '<=', $maxPrice);
             }
 
-            // Apply sorting (default: latest first)
+            // Apply sorting with validation (default: latest first)
             $query->orderBy($sortBy, $sortOrder);
+            
+            // Load relationships only if they exist
+            $with = [];
+            if (method_exists(Property::class, 'category')) {
+                $with[] = 'category';
+            }
+            if (method_exists(Property::class, 'location')) {
+                $with[] = 'location';
+            }
+            if (!empty($with)) {
+                $query->with($with);
+            }
 
             $properties = $query->paginate($perPage);
 
@@ -407,12 +543,42 @@ class PropertyApiController extends Controller
                 ]
             ], 200);
 
+        } catch (\Illuminate\Database\QueryException $e) {
+            \Log::error('Database error in getAllProperties: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Database error occurred while retrieving properties',
+                'error' => config('app.debug') ? $e->getMessage() : 'Please try again later',
+                'data' => [
+                    'properties' => [],
+                    'pagination' => [
+                        'current_page' => 1,
+                        'per_page' => $request->get('per_page', 15),
+                        'total' => 0,
+                        'last_page' => 1,
+                        'from' => null,
+                        'to' => null,
+                    ]
+                ]
+            ], 200);
         } catch (\Exception $e) {
+            \Log::error('Error in getAllProperties: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to retrieve all properties',
-                'error' => config('app.debug') ? $e->getMessage() : 'Internal server error'
-            ], 500);
+                'error' => config('app.debug') ? $e->getMessage() : 'An unexpected error occurred',
+                'data' => [
+                    'properties' => [],
+                    'pagination' => [
+                        'current_page' => 1,
+                        'per_page' => $request->get('per_page', 15),
+                        'total' => 0,
+                        'last_page' => 1,
+                        'from' => null,
+                        'to' => null,
+                    ]
+                ]
+            ], 200);
         }
     }
 }
