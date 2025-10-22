@@ -42,9 +42,9 @@ Route::middleware(['throttle:60,1'])->group(function () {
 
 // Client Authentication Routes
 Route::prefix('client')->group(function () {
-    // Public routes
-    Route::post('/register', [ClientAuthController::class, 'register'])->middleware('throttle:10,1');
-    Route::post('/login', [ClientAuthController::class, 'login'])->middleware('throttle:10,1');
+    // Public routes - Generous throttle limits since controller has its own rate limiting
+    Route::post('/register', [ClientAuthController::class, 'register'])->middleware('throttle:60,1');
+    Route::post('/login', [ClientAuthController::class, 'login'])->middleware('throttle:60,1');
     Route::get('/auth/google', [ClientAuthController::class, 'redirectToGoogle']);
     Route::get('/auth/google/callback', [ClientAuthController::class, 'handleGoogleCallback']);
 
