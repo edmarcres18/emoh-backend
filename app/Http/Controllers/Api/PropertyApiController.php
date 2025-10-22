@@ -415,36 +415,4 @@ class PropertyApiController extends Controller
             ], 500);
         }
     }
-
-    /**
-     * Get a single property by ID with full details
-     */
-    public function getPropertyById(int $id): JsonResponse
-    {
-        try {
-            $property = Property::with(['category', 'location', 'images'])
-                ->findOrFail($id);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Property retrieved successfully',
-                'data' => [
-                    'property' => $property
-                ]
-            ], 200);
-
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Property not found',
-                'error' => 'The requested property does not exist'
-            ], 404);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to retrieve property',
-                'error' => config('app.debug') ? $e->getMessage() : 'Internal server error'
-            ], 500);
-        }
-    }
 }
