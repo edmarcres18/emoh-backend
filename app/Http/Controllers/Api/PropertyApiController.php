@@ -30,6 +30,7 @@ class PropertyApiController extends Controller
             'per_page' => 'nullable|integer|min:1|max:100',
             'page' => 'nullable|integer|min:1',
             'search' => 'nullable|string|max:255',
+            'category' => 'nullable|string|max:255',
             'category_id' => 'nullable|integer|exists:categories,id',
             'location_id' => 'nullable|integer|exists:locations,id',
             'min_price' => 'nullable|numeric|min:0',
@@ -49,6 +50,7 @@ class PropertyApiController extends Controller
         try {
             $perPage = $request->get('per_page', 15);
             $search = $request->get('search');
+            $category = $request->get('category');
             $categoryId = $request->get('category_id');
             $locationId = $request->get('location_id');
             $minPrice = $request->get('min_price');
@@ -59,17 +61,29 @@ class PropertyApiController extends Controller
             $query = Property::with(['category', 'location'])
                 ->where('status', $request->status);
 
-            // Apply search filter
+            // Apply comprehensive search filter
+            // Search across property name, details, location name, and category name
             if ($search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('property_name', 'like', "%{$search}%")
-                      ->orWhere('details', 'like', "%{$search}%");
+                      ->orWhere('details', 'like', "%{$search}%")
+                      ->orWhereHas('location', function ($locationQuery) use ($search) {
+                          $locationQuery->where('name', 'like', "%{$search}%")
+                                       ->orWhere('address', 'like', "%{$search}%");
+                      })
+                      ->orWhereHas('category', function ($categoryQuery) use ($search) {
+                          $categoryQuery->where('name', 'like', "%{$search}%");
+                      });
                 });
             }
 
-            // Apply category filter
+            // Apply category filter (by ID or by name)
             if ($categoryId) {
                 $query->where('category_id', $categoryId);
+            } elseif ($category) {
+                $query->whereHas('category', function ($categoryQuery) use ($category) {
+                    $categoryQuery->where('name', 'like', "%{$category}%");
+                });
             }
 
             // Apply location filter
@@ -125,6 +139,7 @@ class PropertyApiController extends Controller
             'per_page' => 'nullable|integer|min:1|max:100',
             'page' => 'nullable|integer|min:1',
             'search' => 'nullable|string|max:255',
+            'category' => 'nullable|string|max:255',
             'category_id' => 'nullable|integer|exists:categories,id',
             'location_id' => 'nullable|integer|exists:locations,id',
             'status' => 'nullable|string|in:Available,Rented,Under Maintenance,Sold',
@@ -145,6 +160,7 @@ class PropertyApiController extends Controller
         try {
             $perPage = $request->get('per_page', 15);
             $search = $request->get('search');
+            $category = $request->get('category');
             $categoryId = $request->get('category_id');
             $locationId = $request->get('location_id');
             $status = $request->get('status');
@@ -156,17 +172,29 @@ class PropertyApiController extends Controller
             $query = Property::with(['category', 'location'])
                 ->where('is_featured', true);
 
-            // Apply search filter
+            // Apply comprehensive search filter
+            // Search across property name, details, location name, and category name
             if ($search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('property_name', 'like', "%{$search}%")
-                      ->orWhere('details', 'like', "%{$search}%");
+                      ->orWhere('details', 'like', "%{$search}%")
+                      ->orWhereHas('location', function ($locationQuery) use ($search) {
+                          $locationQuery->where('name', 'like', "%{$search}%")
+                                       ->orWhere('address', 'like', "%{$search}%");
+                      })
+                      ->orWhereHas('category', function ($categoryQuery) use ($search) {
+                          $categoryQuery->where('name', 'like', "%{$search}%");
+                      });
                 });
             }
 
-            // Apply category filter
+            // Apply category filter (by ID or by name)
             if ($categoryId) {
                 $query->where('category_id', $categoryId);
+            } elseif ($category) {
+                $query->whereHas('category', function ($categoryQuery) use ($category) {
+                    $categoryQuery->where('name', 'like', "%{$category}%");
+                });
             }
 
             // Apply location filter
@@ -282,6 +310,7 @@ class PropertyApiController extends Controller
             'per_page' => 'nullable|integer|min:1|max:100',
             'page' => 'nullable|integer|min:1',
             'search' => 'nullable|string|max:255',
+            'category' => 'nullable|string|max:255',
             'category_id' => 'nullable|integer|exists:categories,id',
             'location_id' => 'nullable|integer|exists:locations,id',
             'status' => 'nullable|string|in:Available,Rented,Under Maintenance,Sold',
@@ -302,6 +331,7 @@ class PropertyApiController extends Controller
         try {
             $perPage = $request->get('per_page', 15);
             $search = $request->get('search');
+            $category = $request->get('category');
             $categoryId = $request->get('category_id');
             $locationId = $request->get('location_id');
             $status = $request->get('status');
@@ -312,17 +342,29 @@ class PropertyApiController extends Controller
 
             $query = Property::with(['category', 'location']);
 
-            // Apply search filter
+            // Apply comprehensive search filter
+            // Search across property name, details, location name, and category name
             if ($search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('property_name', 'like', "%{$search}%")
-                      ->orWhere('details', 'like', "%{$search}%");
+                      ->orWhere('details', 'like', "%{$search}%")
+                      ->orWhereHas('location', function ($locationQuery) use ($search) {
+                          $locationQuery->where('name', 'like', "%{$search}%")
+                                       ->orWhere('address', 'like', "%{$search}%");
+                      })
+                      ->orWhereHas('category', function ($categoryQuery) use ($search) {
+                          $categoryQuery->where('name', 'like', "%{$search}%");
+                      });
                 });
             }
 
-            // Apply category filter
+            // Apply category filter (by ID or by name)
             if ($categoryId) {
                 $query->where('category_id', $categoryId);
+            } elseif ($category) {
+                $query->whereHas('category', function ($categoryQuery) use ($category) {
+                    $categoryQuery->where('name', 'like', "%{$category}%");
+                });
             }
 
             // Apply location filter
