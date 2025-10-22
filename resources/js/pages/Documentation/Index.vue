@@ -5,7 +5,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import Icon from '@/components/Icon.vue';
-import axios from 'axios';
 
 // Props
 interface Props {
@@ -218,30 +217,6 @@ const currentSection = computed(() => {
     return navigationItems.find(item => item.id === activeSection.value);
 });
 
-// Dynamic documentation data
-const loading = ref(true);
-const error = ref<string | null>(null);
-const dynamic = ref<{
-    techStack?: any[];
-    dataModels?: any[];
-    apiEndpoints?: any[];
-    counts?: Record<string, number>;
-} | null>(null);
-
-const techStackData = computed(() => (dynamic.value?.techStack?.length ? dynamic.value.techStack : techStack));
-const dataModelsData = computed(() => (dynamic.value?.dataModels?.length ? dynamic.value.dataModels : dataModels));
-const apiEndpointsData = computed(() => (dynamic.value?.apiEndpoints?.length ? dynamic.value.apiEndpoints : apiEndpoints));
-const counts = computed(() => {
-    if (dynamic.value?.counts) return dynamic.value.counts as Record<string, number>;
-    const endpointsCount = apiEndpoints.reduce((sum, c) => sum + c.endpoints.length, 0);
-    return {
-        features: features.length,
-        models: dataModels.length,
-        endpoints: endpointsCount,
-        components: 50,
-    } as Record<string, number>;
-});
-
 // Methods
 const scrollToSection = (sectionId: string) => {
     const navItem = navigationItems.find(item => item.id === sectionId);
@@ -302,17 +277,6 @@ onMounted(() => {
         }
     }
 });
-
-onMounted(async () => {
-    try {
-        const { data } = await axios.get('/documentation/data');
-        dynamic.value = data ?? {};
-    } catch (e: any) {
-        error.value = e?.message || 'Failed to load documentation data';
-    } finally {
-        loading.value = false;
-    }
-});
 </script>
 
 <template>
@@ -347,12 +311,6 @@ onMounted(async () => {
                 </div>
             </div>
         </header>
-
-        <div v-if="error" class="mx-auto max-w-5xl mt-4 px-4">
-            <div class="rounded-lg border border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-300 px-4 py-3 text-sm">
-                <strong class="font-semibold">Note:</strong> Showing static documentation. Live data failed to load ({{ error }}).
-            </div>
-        </div>
 
         <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <div class="flex gap-8">
@@ -397,11 +355,11 @@ onMounted(async () => {
                                 </div>
                                 <div class="flex justify-between text-xs">
                                     <span class="text-slate-600 dark:text-slate-400">Features</span>
-                                    <span class="font-medium text-orange-600 dark:text-orange-400">{{ counts.features }}</span>
+                                    <span class="font-medium text-orange-600 dark:text-orange-400">6</span>
                                 </div>
                                 <div class="flex justify-between text-xs">
                                     <span class="text-slate-600 dark:text-slate-400">API Endpoints</span>
-                                    <span class="font-medium text-orange-600 dark:text-orange-400">{{ counts.endpoints }}</span>
+                                    <span class="font-medium text-orange-600 dark:text-orange-400">15+</span>
                                 </div>
                             </div>
                         </div>
@@ -496,7 +454,7 @@ onMounted(async () => {
                                     <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
                                         <Icon name="star" class="h-8 w-8 text-white" />
                                     </div>
-                                    <div class="text-3xl font-bold text-orange-600 dark:text-orange-400 mb-2">{{ counts.features }}</div>
+                                    <div class="text-3xl font-bold text-orange-600 dark:text-orange-400 mb-2">6</div>
                                     <div class="text-sm font-medium text-slate-600 dark:text-slate-400">Core Features</div>
                                     <div class="text-xs text-slate-500 dark:text-slate-500 mt-1">Comprehensive functionality</div>
                                 </CardContent>
@@ -507,7 +465,7 @@ onMounted(async () => {
                                     <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-amber-500 to-yellow-500 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
                                         <Icon name="database" class="h-8 w-8 text-white" />
                                     </div>
-                                    <div class="text-3xl font-bold text-amber-600 dark:text-amber-400 mb-2">{{ counts.models }}</div>
+                                    <div class="text-3xl font-bold text-amber-600 dark:text-amber-400 mb-2">6</div>
                                     <div class="text-sm font-medium text-slate-600 dark:text-slate-400">Data Models</div>
                                     <div class="text-xs text-slate-500 dark:text-slate-500 mt-1">Well-structured entities</div>
                                 </CardContent>
@@ -518,7 +476,7 @@ onMounted(async () => {
                                     <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-yellow-500 to-orange-500 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
                                         <Icon name="code" class="h-8 w-8 text-white" />
                                     </div>
-                                    <div class="text-3xl font-bold text-yellow-600 dark:text-yellow-400 mb-2">{{ counts.endpoints }}</div>
+                                    <div class="text-3xl font-bold text-yellow-600 dark:text-yellow-400 mb-2">15+</div>
                                     <div class="text-sm font-medium text-slate-600 dark:text-slate-400">API Endpoints</div>
                                     <div class="text-xs text-slate-500 dark:text-slate-500 mt-1">RESTful services</div>
                                 </CardContent>
@@ -529,7 +487,7 @@ onMounted(async () => {
                                     <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
                                         <Icon name="component" class="h-8 w-8 text-white" />
                                     </div>
-                                    <div class="text-3xl font-bold text-red-600 dark:text-red-400 mb-2">{{ counts.components }}</div>
+                                    <div class="text-3xl font-bold text-red-600 dark:text-red-400 mb-2">50+</div>
                                     <div class="text-sm font-medium text-slate-600 dark:text-slate-400">Components</div>
                                     <div class="text-xs text-slate-500 dark:text-slate-500 mt-1">Reusable UI elements</div>
                                 </CardContent>
@@ -713,7 +671,7 @@ onMounted(async () => {
                                 </CardHeader>
                                 <CardContent>
                                     <div class="grid grid-cols-2 gap-4">
-                                        <div v-for="tech in techStackData" :key="tech.name" class="text-center p-4 rounded-lg border hover:bg-muted/50 transition-colors">
+                                        <div v-for="tech in techStack" :key="tech.name" class="text-center p-4 rounded-lg border hover:bg-muted/50 transition-colors">
                                             <Icon :name="tech.icon" class="h-8 w-8 mx-auto mb-2 text-blue-600" />
                                             <div class="font-medium text-sm">{{ tech.name }}</div>
                                             <div class="text-xs text-muted-foreground">{{ tech.description }}</div>
@@ -784,7 +742,7 @@ onMounted(async () => {
                         </div>
 
                         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            <Card v-for="model in dataModelsData" :key="model.name" class="hover:shadow-lg transition-shadow">
+                            <Card v-for="model in dataModels" :key="model.name" class="hover:shadow-lg transition-shadow">
                                 <CardHeader>
                                     <CardTitle class="flex items-center gap-2">
                                         <Icon name="database" class="h-5 w-5 text-blue-600" />
@@ -797,7 +755,7 @@ onMounted(async () => {
                                         <div>
                                             <h4 class="font-medium text-sm mb-2">Fields</h4>
                                             <div class="text-xs text-muted-foreground font-mono bg-muted/50 p-2 rounded">
-                                                {{ Array.isArray(model.fields) ? model.fields.join(', ') : model.fields }}
+                                                {{ model.fields.join(', ') }}
                                             </div>
                                         </div>
                                         <div>
@@ -824,7 +782,7 @@ onMounted(async () => {
                         </div>
 
                         <div class="space-y-8">
-                            <div v-for="category in apiEndpointsData" :key="category.category">
+                            <div v-for="category in apiEndpoints" :key="category.category">
                                 <h3 class="text-xl font-semibold mb-4 flex items-center gap-2">
                                     <Icon name="code" class="h-5 w-5" />
                                     {{ category.category }}
@@ -834,7 +792,7 @@ onMounted(async () => {
                                          class="flex items-center gap-4 p-4 rounded-lg border hover:bg-muted/50 transition-colors">
                                         <Badge :variant="endpoint.method === 'GET' ? 'default' :
                                                        endpoint.method === 'POST' ? 'secondary' :
-                                                       endpoint.method === 'PUT' || endpoint.method === 'PATCH' ? 'outline' : 'destructive'"
+                                                       endpoint.method === 'PUT' ? 'outline' : 'destructive'"
                                                class="font-mono text-xs">
                                             {{ endpoint.method }}
                                         </Badge>

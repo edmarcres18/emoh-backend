@@ -11,7 +11,6 @@ use App\Http\Controllers\Admin\ClientController;
 use App\Http\Controllers\Admin\SiteSettingsController;
 use App\Http\Controllers\Admin\RentedController;
 use App\Http\Controllers\Admin\DatabaseBackupController;
-use App\Http\Controllers\DocumentationController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -37,9 +36,6 @@ Route::get('/documentation/{slug}', function ($slug) {
 
     return Inertia::render('Documentation/Index', ['slug' => $slug]);
 })->name('documentation.section');
-
-// Public JSON endpoint for dynamic documentation metadata
-Route::get('/documentation/data', [DocumentationController::class, 'data'])->name('documentation.data');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
