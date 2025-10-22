@@ -415,4 +415,95 @@ class PropertyApiController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Get property by ID with full details
+     */
+    public function getPropertyById(Request $request, $id): JsonResponse
+    {
+        try {
+            $property = Property::with(['category', 'location'])
+                ->findOrFail($id);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Property retrieved successfully',
+                'data' => $property
+            ], 200);
+
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Property not found',
+                'error' => 'The requested property does not exist'
+            ], 404);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve property',
+                'error' => config('app.debug') ? $e->getMessage() : 'Internal server error'
+            ], 500);
+        }
+    }
+
+    /**
+     * Get related properties by category_id
+     */
+    public function getRelatedProperties(Request $request, $id): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'limit' => 'nullable|integer|min:1|max:20',
+            'exclude_id' => 'nullable|integer',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        try {
+            // Get the property to find its category_id
+            $property = Property::findOrFail($id);
+            
+            $limit = $request->get('limit', 6);
+            $excludeId = $request->get('exclude_id', $id);
+
+            // Get related properties with same category_id
+            $relatedProperties = Property::with(['category', 'location'])
+                ->where('category_id', $property->category_id)
+                ->where('id', '!=', $excludeId)
+                ->where('status', 'Available') // Only show available properties
+                ->orderBy('is_featured', 'desc') // Featured properties first
+                ->orderBy('created_at', 'desc') // Then by newest
+                ->limit($limit)
+                ->get();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Related properties retrieved successfully',
+                'data' => [
+                    'properties' => $relatedProperties,
+                    'category_id' => $property->category_id,
+                    'category_name' => $property->category->name ?? 'Unknown',
+                    'total_count' => $relatedProperties->count()
+                ]
+            ], 200);
+
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Property not found',
+                'error' => 'The requested property does not exist'
+            ], 404);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve related properties',
+                'error' => config('app.debug') ? $e->getMessage() : 'Internal server error'
+            ], 500);
+        }
+    }
 }
