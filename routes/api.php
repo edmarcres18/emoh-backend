@@ -28,15 +28,25 @@ Route::middleware(['throttle:60,1'])->group(function () {
     });
     
     Route::get('/locations', function () {
-        $locations = \App\Models\Locations::select('id', 'name', 'address')
-            ->orderBy('name', 'asc')
-            ->get();
-        
-        return response()->json([
-            'success' => true,
-            'message' => 'Locations retrieved successfully',
-            'data' => $locations
-        ], 200);
+        try {
+            $locations = \App\Models\Locations::select('id', 'name', 'description')
+                ->orderBy('name', 'asc')
+                ->get();
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Locations retrieved successfully',
+                'data' => $locations
+            ], 200);
+        } catch (\Exception $e) {
+            \Log::error('Error fetching locations: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve locations',
+                'error' => config('app.debug') ? $e->getMessage() : 'Internal server error',
+                'data' => []
+            ], 200);
+        }
     });
 });
 
