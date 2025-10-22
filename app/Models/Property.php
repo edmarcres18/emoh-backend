@@ -42,6 +42,31 @@ class Property extends Model
     ];
 
     /**
+     * Get the images attribute, ensuring it's always an array.
+     *
+     * @param  mixed  $value
+     * @return array
+     */
+    public function getImagesAttribute($value): array
+    {
+        // If value is null, return empty array
+        if ($value === null) {
+            return [];
+        }
+
+        // If it's already an array, return it
+        if (is_array($value)) {
+            return $value;
+        }
+
+        // Try to decode JSON
+        $decoded = json_decode($value, true);
+        
+        // Return decoded value if it's an array, otherwise empty array
+        return is_array($decoded) ? $decoded : [];
+    }
+
+    /**
      * Get the category that owns the property.
      */
     public function category(): BelongsTo
