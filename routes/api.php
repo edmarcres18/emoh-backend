@@ -13,6 +13,33 @@ Route::get('/user', function (Request $request) {
 
 Route::get('/contact-info', [SiteSettingsController::class, 'getContactInfo']);
 
+// Categories and Locations API Routes - Public access for property search
+Route::middleware(['throttle:60,1'])->group(function () {
+    Route::get('/categories', function () {
+        $categories = \App\Models\Category::select('id', 'name', 'description')
+            ->orderBy('name', 'asc')
+            ->get();
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Categories retrieved successfully',
+            'data' => $categories
+        ], 200);
+    });
+    
+    Route::get('/locations', function () {
+        $locations = \App\Models\Locations::select('id', 'name', 'address')
+            ->orderBy('name', 'asc')
+            ->get();
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Locations retrieved successfully',
+            'data' => $locations
+        ], 200);
+    });
+});
+
 // Client Authentication Routes
 Route::prefix('client')->group(function () {
     // Public routes
