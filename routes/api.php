@@ -76,6 +76,7 @@ Route::prefix('properties')->middleware(['api', 'throttle:60,1'])->group(functio
     Route::get('/featured-properties', [PropertyApiController::class, 'getFeaturedProperties']);
     Route::get('/stats-properties', [PropertyApiController::class, 'getPropertyStats']);
     Route::get('/statuses-properties', [PropertyApiController::class, 'getAvailableStatuses']);
+    Route::get('/{propertyId}/related-properties', [PropertyApiController::class, 'getRelatedProperties']);
 });
 
 // Site Settings API Routes - Public read access with rate limiting, protected write access

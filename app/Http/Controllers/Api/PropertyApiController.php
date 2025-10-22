@@ -415,4 +415,79 @@ class PropertyApiController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Get related properties based on category or location
+     */
+    public function getRelatedProperties(Request $request, $propertyId): JsonResponse
+    {
+        $validator = Validator::make(array_merge($request->all(), ['property_id' => $propertyId]), [
+            'property_id' => 'required|integer|exists:properties,id',
+            'per_page' => 'nullable|integer|min:1|max:20',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        try {
+            $perPage = $request->get('per_page', 6);
+            
+            // Get the current property
+            $property = Property::with(['category', 'location'])->findOrFail($propertyId);
+
+            // Build query for related properties
+            $query = Property::with(['category', 'location'])
+                ->where('id', '!=', $propertyId) // Exclude current property
+                ->where('status', 'Available'); // Only show available properties
+
+            // Prioritize properties with same location, then same category
+            $query->where(function ($q) use ($property) {
+                $q->where('location_id', $property->location_id)
+                  ->orWhere('category_id', $property->category_id);
+            });
+
+            // Order by: same location first, then same category, then latest
+            $query->orderByRaw('
+                CASE 
+                    WHEN location_id = ? AND category_id = ? THEN 1
+                    WHEN location_id = ? THEN 2
+                    WHEN category_id = ? THEN 3
+                    ELSE 4
+                END
+            ', [
+                $property->location_id, 
+                $property->category_id,
+                $property->location_id,
+                $property->category_id
+            ])
+            ->orderBy('created_at', 'desc');
+
+            $relatedProperties = $query->limit($perPage)->get();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Related properties retrieved successfully',
+                'data' => [
+                    'properties' => $relatedProperties,
+                    'count' => $relatedProperties->count(),
+                    'criteria' => [
+                        'location' => $property->location?->name,
+                        'category' => $property->category?->name,
+                    ]
+                ]
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve related properties',
+                'error' => config('app.debug') ? $e->getMessage() : 'Internal server error'
+            ], 500);
+        }
+    }
 }
