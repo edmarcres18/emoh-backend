@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import Icon from '@/components/Icon.vue';
 import AnalyticsModal from '@/components/AnalyticsModal.vue';
-import { computed, ref, onMounted } from 'vue';
+import { computed, ref, onMounted, onBeforeUnmount } from 'vue';
 import { formatCurrency, formatNumber, formatRelativeTime } from '@/utils/formatters';
 
 // Props from the controller
@@ -54,6 +54,8 @@ const isAdmin = computed(() =>
 const loading = ref(false);
 const error = ref<string | null>(null);
 const showAnalyticsModal = ref(false);
+const autoRefresh = ref(true);
+let refreshInterval: NodeJS.Timeout | null = null;
 
 // Chart data processing
 const chartData = computed(() => {
@@ -66,49 +68,59 @@ const chartData = computed(() => {
 });
 
 // Enhanced stats processing with better categorization
-const propertyStats = computed(() => [
-    {
-        title: 'Total Properties',
-        value: formatNumber(props.stats?.total_properties || 0),
-        icon: 'home',
-        description: 'Active listings',
-        color: 'bg-blue-500',
-        trend: '+12%',
-        trendUp: true
-    },
-    {
-        title: 'Featured Properties',
-        value: formatNumber(props.stats?.featured_properties || 0),
-        icon: 'star',
-        description: 'Premium listings',
-        color: 'bg-yellow-500',
-        trend: '+8%',
-        trendUp: true
-    },
-    {
-        title: 'Available Properties',
-        value: formatNumber((props.stats?.total_properties || 0) - (props.rentedStats?.active_rentals || 0)),
-        icon: 'home',
-        description: 'Ready to rent',
-        color: 'bg-green-500',
-        trend: '-3%',
-        trendUp: false
-    },
-    {
-        title: 'Categories',
-        value: formatNumber(props.stats?.total_categories || 0),
-        icon: 'tag',
-        description: 'Property types',
-        color: 'bg-purple-500',
-        trend: '0%',
-        trendUp: null
-    }
-]);
+const propertyStats = computed(() => {
+    const propertyGrowth = props.stats?.property_growth || 0;
+    const featuredGrowth = props.stats?.featured_growth || 0;
+    const availableCount = (props.stats?.total_properties || 0) - (props.rentedStats?.active_rentals || 0);
+    
+    return [
+        {
+            title: 'Total Properties',
+            value: formatNumber(props.stats?.total_properties || 0),
+            icon: 'home',
+            description: 'Active listings',
+            color: 'bg-blue-500',
+            trend: `${propertyGrowth > 0 ? '+' : ''}${propertyGrowth}%`,
+            trendUp: propertyGrowth > 0 ? true : propertyGrowth < 0 ? false : null
+        },
+        {
+            title: 'Featured Properties',
+            value: formatNumber(props.stats?.featured_properties || 0),
+            icon: 'star',
+            description: 'Premium listings',
+            color: 'bg-yellow-500',
+            trend: `${featuredGrowth > 0 ? '+' : ''}${featuredGrowth}%`,
+            trendUp: featuredGrowth > 0 ? true : featuredGrowth < 0 ? false : null
+        },
+        {
+            title: 'Available Properties',
+            value: formatNumber(availableCount),
+            icon: 'home',
+            description: 'Ready to rent',
+            color: 'bg-green-500',
+            trend: `${availableCount} available`,
+            trendUp: availableCount > 0
+        },
+        {
+            title: 'Categories',
+            value: formatNumber(props.stats?.total_categories || 0),
+            icon: 'tag',
+            description: 'Property types',
+            color: 'bg-purple-500',
+            trend: `${props.stats?.total_locations || 0} locations`,
+            trendUp: null
+        }
+    ];
+});
 
 const locationStats = computed(() => props.locationStats || []);
 
 const adminStats = computed(() => {
     if (!isAdmin.value || !props.adminStats) return [];
+
+    const revenueGrowth = props.adminStats.revenue_growth || 0;
+    const monthlyGrowth = props.adminStats.monthly_growth || 0;
+    const occupancyRate = props.adminStats.occupancy_rate || 0;
 
     return [
         {
@@ -117,8 +129,8 @@ const adminStats = computed(() => {
             icon: 'dollarSign',
             description: 'Monthly potential',
             color: 'bg-emerald-500',
-            trend: '+15%',
-            trendUp: true
+            trend: `${revenueGrowth > 0 ? '+' : ''}${revenueGrowth}%`,
+            trendUp: revenueGrowth > 0 ? true : revenueGrowth < 0 ? false : null
         },
         {
             title: 'Average Price',
@@ -126,32 +138,35 @@ const adminStats = computed(() => {
             icon: 'trendingUp',
             description: 'Per property',
             color: 'bg-orange-500',
-            trend: '+5%',
-            trendUp: true
+            trend: `${props.adminStats.properties_this_month || 0} this month`,
+            trendUp: (props.adminStats.properties_this_month || 0) > 0
         },
         {
             title: 'Monthly Growth',
-            value: `${props.adminStats.monthly_growth || 0}%`,
+            value: `${monthlyGrowth > 0 ? '+' : ''}${monthlyGrowth}%`,
             icon: 'barChart3',
             description: 'This month',
-            color: props.adminStats.monthly_growth >= 0 ? 'bg-green-500' : 'bg-red-500',
-            trend: props.adminStats.monthly_growth >= 0 ? 'Growing' : 'Declining',
-            trendUp: props.adminStats.monthly_growth >= 0
+            color: monthlyGrowth >= 0 ? 'bg-green-500' : 'bg-red-500',
+            trend: monthlyGrowth >= 0 ? 'Growing' : 'Declining',
+            trendUp: monthlyGrowth >= 0
         },
         {
             title: 'Occupancy Rate',
-            value: `${props.adminStats.occupancy_rate || 0}%`,
+            value: `${occupancyRate}%`,
             icon: 'users',
             description: 'Current rate',
             color: 'bg-indigo-500',
-            trend: props.adminStats.occupancy_rate > 80 ? 'High' : props.adminStats.occupancy_rate > 60 ? 'Good' : 'Low',
-            trendUp: props.adminStats.occupancy_rate > 60
+            trend: occupancyRate > 80 ? 'Excellent' : occupancyRate > 60 ? 'Good' : 'Needs attention',
+            trendUp: occupancyRate > 60
         }
     ];
 });
 
 const systemStats = computed(() => {
     if (!isSystemAdmin.value || !props.systemStats) return [];
+
+    const usersThisMonth = props.systemStats.users_this_month || 0;
+    const clientsThisMonth = props.systemStats.clients_this_month || 0;
 
     return [
         {
@@ -160,8 +175,8 @@ const systemStats = computed(() => {
             icon: 'users',
             description: 'Registered users',
             color: 'bg-cyan-500',
-            trend: '+3',
-            trendUp: true
+            trend: `${usersThisMonth} this month`,
+            trendUp: usersThisMonth > 0
         },
         {
             title: 'Active Users',
@@ -169,17 +184,17 @@ const systemStats = computed(() => {
             icon: 'userCheck',
             description: 'Verified accounts',
             color: 'bg-teal-500',
-            trend: '+2',
+            trend: `${props.systemStats.admins || 0} admins`,
             trendUp: true
         },
         {
-            title: 'System Admins',
-            value: formatNumber(props.systemStats.system_admins || 0),
-            icon: 'shield',
-            description: 'Admin users',
-            color: 'bg-red-500',
-            trend: '0',
-            trendUp: null
+            title: 'Total Clients',
+            value: formatNumber(props.systemStats.total_clients || 0),
+            icon: 'users',
+            description: 'Client accounts',
+            color: 'bg-blue-500',
+            trend: `${clientsThisMonth} this month`,
+            trendUp: clientsThisMonth > 0
         },
         {
             title: 'Database Size',
@@ -187,8 +202,8 @@ const systemStats = computed(() => {
             icon: 'database',
             description: 'Storage used',
             color: 'bg-gray-500',
-            trend: '+0.2MB',
-            trendUp: true
+            trend: props.systemStats.storage_usage || 'N/A',
+            trendUp: null
         }
     ];
 });
@@ -197,15 +212,20 @@ const systemStats = computed(() => {
 const rentalStats = computed(() => {
     if (!props.rentedStats) return [];
 
+    const activeRentals = props.rentedStats.active_rentals || 0;
+    const totalRentals = props.rentedStats.total_rentals || 0;
+    const expiringSoon = props.rentedStats.expiring_soon || 0;
+    const occupancyRate = props.rentedStats.occupancy_rate || 0;
+
     return [
         {
             title: 'Active Rentals',
-            value: formatNumber(props.rentedStats.active_rentals || 0),
+            value: formatNumber(activeRentals),
             icon: 'home',
             description: 'Currently occupied',
             color: 'bg-green-500',
-            trend: '+5',
-            trendUp: true
+            trend: `${totalRentals} total`,
+            trendUp: activeRentals > 0
         },
         {
             title: 'Monthly Revenue',
@@ -213,26 +233,26 @@ const rentalStats = computed(() => {
             icon: 'dollarSign',
             description: 'From active rentals',
             color: 'bg-emerald-500',
-            trend: '+12%',
+            trend: `${activeRentals} active`,
             trendUp: true
         },
         {
             title: 'Expiring Soon',
-            value: formatNumber(props.rentedStats.expiring_soon || 0),
+            value: formatNumber(expiringSoon),
             icon: 'clock',
             description: 'Next 30 days',
-            color: 'bg-orange-500',
-            trend: props.rentedStats.expiring_soon > 0 ? 'Action needed' : 'All good',
-            trendUp: props.rentedStats.expiring_soon === 0
+            color: expiringSoon > 0 ? 'bg-orange-500' : 'bg-green-500',
+            trend: expiringSoon > 0 ? 'Action needed' : 'All good',
+            trendUp: expiringSoon === 0
         },
         {
             title: 'Occupancy Rate',
-            value: `${props.rentedStats.occupancy_rate || 0}%`,
+            value: `${occupancyRate}%`,
             icon: 'percent',
             description: 'Properties occupied',
             color: 'bg-blue-500',
-            trend: props.rentedStats.occupancy_rate > 80 ? 'Excellent' : props.rentedStats.occupancy_rate > 60 ? 'Good' : 'Needs attention',
-            trendUp: props.rentedStats.occupancy_rate > 60
+            trend: occupancyRate > 80 ? 'Excellent' : occupancyRate > 60 ? 'Good' : 'Needs attention',
+            trendUp: occupancyRate > 60
         }
     ];
 });
@@ -241,42 +261,47 @@ const rentalStats = computed(() => {
 const clientStats = computed(() => {
     if (!props.clientStats) return [];
 
+    const totalClients = props.clientStats.total_clients || 0;
+    const verifiedClients = props.clientStats.verified_clients || 0;
+    const activeRenters = props.clientStats.active_renters || 0;
+    const newThisMonth = props.clientStats.new_this_month || 0;
+
     return [
         {
             title: 'Total Clients',
-            value: formatNumber(props.clientStats.total_clients || 0),
+            value: formatNumber(totalClients),
             icon: 'users',
             description: 'Registered clients',
             color: 'bg-blue-500',
-            trend: '+8',
-            trendUp: true
+            trend: `${newThisMonth} this month`,
+            trendUp: newThisMonth > 0
         },
         {
             title: 'Verified Clients',
-            value: formatNumber(props.clientStats.verified_clients || 0),
+            value: formatNumber(verifiedClients),
             icon: 'userCheck',
             description: 'Email verified',
             color: 'bg-green-500',
-            trend: '+6',
-            trendUp: true
+            trend: `${totalClients > 0 ? Math.round((verifiedClients / totalClients) * 100) : 0}% verified`,
+            trendUp: verifiedClients > 0
         },
         {
             title: 'Active Renters',
-            value: formatNumber(props.clientStats.active_renters || 0),
+            value: formatNumber(activeRenters),
             icon: 'home',
             description: 'Currently renting',
             color: 'bg-purple-500',
-            trend: '+3',
-            trendUp: true
+            trend: `${totalClients > 0 ? Math.round((activeRenters / totalClients) * 100) : 0}% renting`,
+            trendUp: activeRenters > 0
         },
         {
             title: 'New This Month',
-            value: formatNumber(props.clientStats.new_this_month || 0),
+            value: formatNumber(newThisMonth),
             icon: 'userPlus',
             description: 'Recent signups',
             color: 'bg-orange-500',
-            trend: '+4',
-            trendUp: true
+            trend: newThisMonth > 1 ? 'Growing' : newThisMonth === 1 ? 'Steady' : 'None',
+            trendUp: newThisMonth > 0
         }
     ];
 });
@@ -314,6 +339,7 @@ const getRentalStatusColor = (status: string) => {
 // Utility functions
 const refreshData = async () => {
     loading.value = true;
+    error.value = null;
     try {
         const response = await fetch('/dashboard/refresh', {
             method: 'POST',
@@ -333,10 +359,40 @@ const refreshData = async () => {
         Object.assign(props, data);
 
     } catch (err) {
-        error.value = 'Failed to refresh data';
+        error.value = 'Failed to refresh data. Please try again.';
         console.error('Refresh error:', err);
     } finally {
         loading.value = false;
+    }
+};
+
+// Auto-refresh functionality
+const startAutoRefresh = () => {
+    if (refreshInterval) {
+        clearInterval(refreshInterval);
+    }
+    
+    // Refresh every 5 minutes (300000 ms)
+    refreshInterval = setInterval(() => {
+        if (autoRefresh.value && !loading.value) {
+            refreshData();
+        }
+    }, 300000);
+};
+
+const stopAutoRefresh = () => {
+    if (refreshInterval) {
+        clearInterval(refreshInterval);
+        refreshInterval = null;
+    }
+};
+
+const toggleAutoRefresh = () => {
+    autoRefresh.value = !autoRefresh.value;
+    if (autoRefresh.value) {
+        startAutoRefresh();
+    } else {
+        stopAutoRefresh();
     }
 };
 
@@ -355,7 +411,14 @@ const getActiveClientProgress = () => {
 };
 
 onMounted(() => {
-    // Any initialization logic
+    // Start auto-refresh on mount
+    if (autoRefresh.value) {
+        startAutoRefresh();
+    }
+});
+
+onBeforeUnmount(() => {
+    stopAutoRefresh();
 });
 </script>
 
@@ -366,17 +429,23 @@ onMounted(() => {
         <div class="flex h-full flex-1 flex-col gap-6 overflow-x-auto p-4 sm:p-6">
             <!-- Welcome Section -->
             <div class="flex flex-col gap-4">
-                <div class="flex items-center justify-between">
+                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                     <div>
-                        <h1 class="text-3xl font-bold tracking-tight">Welcome back, {{ user.name }}!</h1>
-                        <p class="text-muted-foreground mt-1">
+                        <h1 class="text-2xl sm:text-3xl font-bold tracking-tight">Welcome back, {{ user.name }}!</h1>
+                        <p class="text-muted-foreground mt-1 text-sm sm:text-base">
                             Here's your comprehensive real estate management overview
                         </p>
                     </div>
-                    <div class="flex items-center gap-2">
-                        <Button variant="outline" size="sm" @click="refreshData" :disabled="loading">
+                    <div class="flex items-center gap-2 w-full sm:w-auto">
+                        <Button variant="outline" size="sm" @click="toggleAutoRefresh" class="flex-1 sm:flex-none">
+                            <Icon :name="autoRefresh ? 'pause' : 'play'" class="h-4 w-4 mr-2" />
+                            <span class="hidden sm:inline">Auto-refresh {{ autoRefresh ? 'ON' : 'OFF' }}</span>
+                            <span class="sm:hidden">Auto</span>
+                        </Button>
+                        <Button variant="outline" size="sm" @click="refreshData" :disabled="loading" class="flex-1 sm:flex-none">
                             <Icon name="refreshCw" :class="loading ? 'h-4 w-4 mr-2 animate-spin' : 'h-4 w-4 mr-2'" />
-                            Refresh
+                            <span class="hidden sm:inline">Refresh</span>
+                            <span class="sm:hidden">Sync</span>
                         </Button>
                     </div>
                 </div>
@@ -393,13 +462,32 @@ onMounted(() => {
                 </div>
             </div>
 
-            <!-- Error Alert -->
-            <div v-if="error" class="rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-800 dark:bg-red-900/20">
-                <div class="flex">
-                    <Icon name="alertCircle" class="h-5 w-5 text-red-400" />
+            <!-- Status Indicators -->
+            <div v-if="loading && !error" class="rounded-lg border border-blue-200 bg-blue-50 p-3 sm:p-4 dark:border-blue-800 dark:bg-blue-900/20">
+                <div class="flex items-center">
+                    <Icon name="refreshCw" class="h-5 w-5 text-blue-500 animate-spin" />
                     <div class="ml-3">
-                        <p class="text-sm text-red-800 dark:text-red-200">{{ error }}</p>
+                        <p class="text-sm text-blue-800 dark:text-blue-200">Updating dashboard data...</p>
                     </div>
+                </div>
+            </div>
+
+            <div v-if="error" class="rounded-lg border border-red-200 bg-red-50 p-3 sm:p-4 dark:border-red-800 dark:bg-red-900/20">
+                <div class="flex items-start">
+                    <Icon name="alertCircle" class="h-5 w-5 text-red-400 flex-shrink-0" />
+                    <div class="ml-3 flex-1">
+                        <p class="text-sm text-red-800 dark:text-red-200">{{ error }}</p>
+                        <Button variant="link" size="sm" @click="refreshData" class="mt-1 p-0 h-auto text-red-700">
+                            Try again
+                        </Button>
+                    </div>
+                </div>
+            </div>
+
+            <div v-if="autoRefresh" class="rounded-lg border border-green-200 bg-green-50 p-2 dark:border-green-800 dark:bg-green-900/20">
+                <div class="flex items-center justify-center">
+                    <Icon name="checkCircle" class="h-4 w-4 text-green-600 mr-2" />
+                    <p class="text-xs text-green-800 dark:text-green-200">Auto-refresh enabled - Updates every 5 minutes</p>
                 </div>
             </div>
 
@@ -415,8 +503,8 @@ onMounted(() => {
                     </Link>
                 </div>
 
-                <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                    <Card v-for="stat in propertyStats" :key="stat.title" class="relative overflow-hidden hover:shadow-md transition-shadow">
+                <div class="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+                    <Card v-for="stat in propertyStats" :key="stat.title" class="relative overflow-hidden hover:shadow-md transition-shadow cursor-pointer">
                         <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle class="text-sm font-medium">{{ stat.title }}</CardTitle>
                             <div :class="[stat.color, 'rounded-full p-2 text-white']">
@@ -447,8 +535,8 @@ onMounted(() => {
                     Coverage Areas
                 </h2>
 
-                <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                    <Card v-for="stat in locationStats" :key="stat.title" class="relative overflow-hidden hover:shadow-md transition-shadow">
+                <div class="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+                    <Card v-for="stat in locationStats" :key="stat.title" class="relative overflow-hidden hover:shadow-md transition-shadow cursor-pointer">
                         <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle class="text-sm font-medium">{{ stat.title }}</CardTitle>
                             <div :class="[stat.color, 'rounded-full p-2 text-white']">
@@ -480,7 +568,7 @@ onMounted(() => {
                 </div>
 
                 <!-- Rental Statistics -->
-                <div v-if="rentedStats" class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                <div v-if="rentedStats" class="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
                     <Card v-for="stat in rentalStats" :key="stat.title" class="relative overflow-hidden hover:shadow-md transition-shadow">
                         <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle class="text-sm font-medium">{{ stat.title }}</CardTitle>
@@ -615,7 +703,7 @@ onMounted(() => {
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                        <div class="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
                             <div v-for="client in recentClients.slice(0, 6)" :key="client.id"
                                  class="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors">
                                 <div class="relative">
@@ -667,7 +755,7 @@ onMounted(() => {
                 </div>
 
                 <!-- Admin Stats Grid -->
-                <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                <div class="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
                     <Card v-for="stat in adminStats" :key="stat.title" class="relative overflow-hidden hover:shadow-md transition-shadow">
                         <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle class="text-sm font-medium">{{ stat.title }}</CardTitle>
@@ -758,7 +846,7 @@ onMounted(() => {
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                        <div class="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
                             <div v-for="category in categoryStats" :key="category.name"
                                  class="rounded-lg border p-4 hover:shadow-md transition-shadow">
                                 <div class="flex items-center gap-2 mb-2">
@@ -799,7 +887,7 @@ onMounted(() => {
                 </div>
 
                 <!-- System Stats -->
-                <div v-if="systemStats" class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                <div v-if="systemStats" class="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
                     <Card v-for="stat in systemStats" :key="stat.title" class="relative overflow-hidden hover:shadow-md transition-shadow">
                         <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle class="text-sm font-medium">{{ stat.title }}</CardTitle>
@@ -941,7 +1029,7 @@ onMounted(() => {
                     Quick Actions
                 </h2>
 
-                <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                <div class="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                     <Link v-for="action in quickActions" :key="action.title" :href="action.href"
                           class="group relative overflow-hidden rounded-lg border p-4 hover:shadow-md transition-all hover:border-primary/20">
                         <div class="flex items-center gap-3">
