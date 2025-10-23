@@ -852,161 +852,325 @@ onMounted(() => {
 
             <!-- System Admin Section -->
             <div v-if="isSystemAdmin" class="space-y-6">
-                <div class="flex items-center justify-between">
-                    <h2 class="text-xl font-semibold tracking-tight flex items-center gap-2">
-                        <Icon name="shield" class="h-5 w-5" />
-                        System Administration
-                    </h2>
-                    <Link href="/admin" class="text-sm text-primary hover:underline">
-                        Admin panel →
-                    </Link>
+                <!-- Header with Action Buttons -->
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                        <h2 class="text-2xl font-bold tracking-tight flex items-center gap-2">
+                            <div class="p-2 rounded-lg bg-red-100 dark:bg-red-900/20">
+                                <Icon name="shield" class="h-6 w-6 text-red-600 dark:text-red-400" />
+                            </div>
+                            System Administration
+                        </h2>
+                        <p class="text-sm text-muted-foreground mt-1">
+                            Monitor and manage your system resources and configurations
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <Button variant="outline" size="sm" @click="refreshData" :disabled="loading">
+                            <Icon name="refreshCw" :class="loading ? 'h-4 w-4 mr-2 animate-spin' : 'h-4 w-4 mr-2'" />
+                            Refresh Stats
+                        </Button>
+                        <Link href="/admin">
+                            <Button size="sm">
+                                <Icon name="settings" class="h-4 w-4 mr-2" />
+                                Admin Panel
+                            </Button>
+                        </Link>
+                    </div>
                 </div>
 
-                <!-- System Stats -->
-                <div v-if="systemStats" class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                    <Card v-for="stat in systemStats" :key="stat.title" class="relative overflow-hidden hover:shadow-md transition-shadow">
-                        <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle class="text-sm font-medium">{{ stat.title }}</CardTitle>
-                            <div :class="[stat.color, 'rounded-full p-2 text-white']">
-                                <Icon :name="stat.icon" class="h-4 w-4" />
-                            </div>
-                        </CardHeader>
-                        <CardContent>
-                            <div class="text-2xl font-bold">{{ stat.value }}</div>
-                            <p class="text-xs text-muted-foreground">{{ stat.description }}</p>
-                            <div class="flex items-center gap-1 mt-2">
-                                <Icon
-                                    :name="stat.trendUp === true ? 'trendingUp' : stat.trendUp === false ? 'trendingDown' : 'minus'"
-                                    :class="`h-3 w-3 ${stat.trendUp === true ? 'text-green-500' : stat.trendUp === false ? 'text-red-500' : 'text-gray-500'}`"
-                                />
-                                <span                                 :class="`text-xs font-medium ${stat.trendUp === true ? 'text-green-600' : stat.trendUp === false ? 'text-red-600' : 'text-gray-600'}`">
-                                    {{ stat.trend }}
-                                </span>
-                            </div>
+                <!-- System Overview Stats -->
+                <div>
+                    <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                        <Icon name="activity" class="h-5 w-5 text-primary" />
+                        System Overview
+                    </h3>
+                    <div v-if="systemStats && systemStats.length > 0" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                        <Card v-for="stat in systemStats" :key="stat.title" 
+                              class="relative overflow-hidden hover:shadow-lg transition-all duration-300 border-l-4"
+                              :class="stat.trendUp === true ? 'border-l-green-500' : stat.trendUp === false ? 'border-l-red-500' : 'border-l-gray-400'">
+                            <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
+                                <CardTitle class="text-sm font-medium text-muted-foreground">{{ stat.title }}</CardTitle>
+                                <div :class="[stat.color, 'rounded-lg p-2.5 text-white shadow-sm']">
+                                    <Icon :name="stat.icon" class="h-5 w-5" />
+                                </div>
+                            </CardHeader>
+                            <CardContent>
+                                <div class="text-3xl font-bold mb-1">{{ stat.value }}</div>
+                                <p class="text-xs text-muted-foreground mb-3">{{ stat.description }}</p>
+                                <div class="flex items-center gap-1.5 pt-2 border-t">
+                                    <Icon
+                                        :name="stat.trendUp === true ? 'trendingUp' : stat.trendUp === false ? 'trendingDown' : 'minus'"
+                                        :class="`h-4 w-4 ${stat.trendUp === true ? 'text-green-600' : stat.trendUp === false ? 'text-red-600' : 'text-gray-500'}`"
+                                    />
+                                    <span :class="`text-sm font-semibold ${stat.trendUp === true ? 'text-green-600' : stat.trendUp === false ? 'text-red-600' : 'text-gray-600'}`">
+                                        {{ stat.trend }}
+                                    </span>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </div>
+
+                    <!-- Empty State for System Stats -->
+                    <Card v-else class="border-dashed">
+                        <CardContent class="text-center py-12">
+                            <Icon name="activity" class="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+                            <p class="text-muted-foreground text-lg font-medium">No system statistics available</p>
+                            <p class="text-sm text-muted-foreground mt-1">System data will appear here once initialized</p>
                         </CardContent>
                     </Card>
                 </div>
 
-                <!-- System Monitoring Grid -->
-                <div class="grid gap-6 lg:grid-cols-2">
-                    <!-- System Logs -->
-                    <Card v-if="systemLogs && systemLogs.length > 0">
-                        <CardHeader class="flex flex-row items-center justify-between">
-                            <CardTitle class="flex items-center gap-2">
-                                <Icon name="fileText" class="h-5 w-5" />
-                                Recent System Logs
-                            </CardTitle>
-                            <Button variant="outline" size="sm" @click="refreshData" :disabled="loading">
-                                <Icon name="refreshCw" :class="loading ? 'h-4 w-4 mr-2 animate-spin' : 'h-4 w-4 mr-2'" />
-                                Refresh
-                            </Button>
-                        </CardHeader>
-                        <CardContent>
-                            <div class="space-y-3">
-                                <div v-for="(log, index) in systemLogs.slice(0, 8)" :key="`${log.message}-${index}`"
-                                     class="flex items-start gap-3 rounded-lg p-3 border"
-                                     :class="getLogLevelColor(log.level)">
-                                    <Badge :variant="log.level === 'error' ? 'destructive' : log.level === 'warning' ? 'secondary' : 'default'"
-                                           class="text-xs shrink-0">
-                                        {{ log.level.toUpperCase() }}
-                                    </Badge>
-                                    <div class="flex-1 min-w-0">
-                                        <p class="text-sm font-medium">{{ log.message }}</p>
-                                        <p class="text-xs text-muted-foreground">{{ formatRelativeTime(log.timestamp) }}</p>
+                <!-- System Monitoring & Logs -->
+                <div>
+                    <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                        <Icon name="monitor" class="h-5 w-5 text-primary" />
+                        System Monitoring
+                    </h3>
+                    <div class="grid gap-6 lg:grid-cols-2">
+                        <!-- System Logs -->
+                        <Card class="flex flex-col">
+                            <CardHeader class="flex flex-row items-center justify-between space-y-0">
+                                <CardTitle class="flex items-center gap-2">
+                                    <Icon name="fileText" class="h-5 w-5" />
+                                    Recent System Logs
+                                </CardTitle>
+                                <Badge variant="secondary" class="text-xs">
+                                    Last {{ systemLogs?.length || 0 }} entries
+                                </Badge>
+                            </CardHeader>
+                            <CardContent class="flex-1">
+                                <div v-if="systemLogs && systemLogs.length > 0" class="space-y-2">
+                                    <div v-for="(log, index) in systemLogs.slice(0, 6)" :key="`${log.message}-${index}`"
+                                         class="flex items-start gap-3 rounded-lg p-3 border-l-2 hover:bg-muted/50 transition-colors"
+                                         :class="log.level === 'error' ? 'border-l-red-500 bg-red-50 dark:bg-red-900/10' : 
+                                                 log.level === 'warning' ? 'border-l-yellow-500 bg-yellow-50 dark:bg-yellow-900/10' : 
+                                                 'border-l-blue-500 bg-blue-50 dark:bg-blue-900/10'">
+                                        <Badge :variant="log.level === 'error' ? 'destructive' : log.level === 'warning' ? 'secondary' : 'default'"
+                                               class="text-xs shrink-0 mt-0.5">
+                                            {{ log.level.toUpperCase() }}
+                                        </Badge>
+                                        <div class="flex-1 min-w-0">
+                                            <p class="text-sm font-medium">{{ log.message }}</p>
+                                            <p class="text-xs text-muted-foreground mt-1">
+                                                <Icon name="clock" class="h-3 w-3 inline mr-1" />
+                                                {{ formatRelativeTime(log.timestamp) }}
+                                            </p>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
 
-                            <div v-if="systemLogs.length === 0" class="text-center py-12">
-                                <Icon name="fileText" class="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-                                <p class="text-muted-foreground text-lg">No system logs available</p>
-                                <p class="text-sm text-muted-foreground mt-1">Logs will appear here as system events occur</p>
-                            </div>
-                        </CardContent>
-                    </Card>
+                                <div v-else class="text-center py-12">
+                                    <Icon name="fileText" class="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+                                    <p class="text-muted-foreground font-medium">No system logs available</p>
+                                    <p class="text-xs text-muted-foreground mt-1">Logs will appear here as system events occur</p>
+                                </div>
+                            </CardContent>
+                        </Card>
 
-                    <!-- Backup Status -->
-                    <Card v-if="backupStatus">
+                        <!-- Backup Status -->
+                        <Card class="flex flex-col" v-if="backupStatus">
+                            <CardHeader>
+                                <CardTitle class="flex items-center gap-2">
+                                    <Icon name="database" class="h-5 w-5" />
+                                    Database Backup
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent class="flex-1">
+                                <div class="space-y-4">
+                                    <!-- Backup Status Indicator -->
+                                    <div class="flex items-center justify-center p-4 rounded-lg"
+                                         :class="backupStatus.status === 'success' ? 'bg-green-50 dark:bg-green-900/20' : 
+                                                 backupStatus.status === 'no_backups' ? 'bg-yellow-50 dark:bg-yellow-900/20' : 
+                                                 'bg-red-50 dark:bg-red-900/20'">
+                                        <div class="text-center">
+                                            <Icon :name="backupStatus.status === 'success' ? 'checkCircle' : 
+                                                       backupStatus.status === 'no_backups' ? 'alertCircle' : 'xCircle'" 
+                                                  :class="backupStatus.status === 'success' ? 'h-10 w-10 text-green-600' : 
+                                                         backupStatus.status === 'no_backups' ? 'h-10 w-10 text-yellow-600' : 
+                                                         'h-10 w-10 text-red-600'" 
+                                                  class="mx-auto mb-2" />
+                                            <Badge :variant="backupStatus.status === 'success' ? 'default' : 
+                                                           backupStatus.status === 'no_backups' ? 'secondary' : 'destructive'"
+                                                   class="text-sm">
+                                                {{ (backupStatus.status || 'unknown').toUpperCase().replace('_', ' ') }}
+                                            </Badge>
+                                        </div>
+                                    </div>
+
+                                    <!-- Backup Details Grid -->
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <div class="text-center p-3 rounded-lg border bg-muted/30">
+                                            <Icon name="clock" class="h-4 w-4 mx-auto mb-1 text-muted-foreground" />
+                                            <p class="text-xs font-medium text-muted-foreground mb-1">Last Backup</p>
+                                            <p class="text-sm font-bold">{{ backupStatus.last_backup ? formatRelativeTime(backupStatus.last_backup) : 'Never' }}</p>
+                                        </div>
+                                        <div class="text-center p-3 rounded-lg border bg-muted/30">
+                                            <Icon name="hardDrive" class="h-4 w-4 mx-auto mb-1 text-muted-foreground" />
+                                            <p class="text-xs font-medium text-muted-foreground mb-1">Backup Size</p>
+                                            <p class="text-sm font-bold">{{ backupStatus.backup_size || '0 MB' }}</p>
+                                        </div>
+                                    </div>
+
+                                    <!-- Additional Backup Info -->
+                                    <div class="space-y-2">
+                                        <div class="flex items-center justify-between p-2.5 rounded-lg border bg-muted/20">
+                                            <span class="text-xs font-medium flex items-center gap-1.5">
+                                                <Icon name="calendar" class="h-3.5 w-3.5" />
+                                                Next Scheduled
+                                            </span>
+                                            <span class="text-xs text-muted-foreground font-medium">
+                                                {{ backupStatus.next_scheduled ? formatRelativeTime(backupStatus.next_scheduled) : 'Not scheduled' }}
+                                            </span>
+                                        </div>
+
+                                        <div class="flex items-center justify-between p-2.5 rounded-lg border bg-muted/20">
+                                            <span class="text-xs font-medium flex items-center gap-1.5">
+                                                <Icon name="trash2" class="h-3.5 w-3.5" />
+                                                Retention Period
+                                            </span>
+                                            <span class="text-xs text-muted-foreground font-medium">{{ backupStatus.retention_days || 30 }} days</span>
+                                        </div>
+
+                                        <div v-if="backupStatus.backup_count" class="flex items-center justify-between p-2.5 rounded-lg border bg-muted/20">
+                                            <span class="text-xs font-medium flex items-center gap-1.5">
+                                                <Icon name="archive" class="h-3.5 w-3.5" />
+                                                Total Backups
+                                            </span>
+                                            <Badge variant="outline" class="text-xs">{{ backupStatus.backup_count }} files</Badge>
+                                        </div>
+                                    </div>
+
+                                    <!-- Quick Action -->
+                                    <Link href="/admin/database-backup" class="block">
+                                        <Button variant="outline" size="sm" class="w-full">
+                                            <Icon name="database" class="h-4 w-4 mr-2" />
+                                            Manage Backups
+                                        </Button>
+                                    </Link>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </div>
+                </div>
+
+                <!-- System Configuration -->
+                <div v-if="siteSettingsOverview">
+                    <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                        <Icon name="settings" class="h-5 w-5 text-primary" />
+                        System Configuration
+                    </h3>
+                    <Card>
                         <CardHeader>
                             <CardTitle class="flex items-center gap-2">
-                                <Icon name="shield" class="h-5 w-5" />
-                                Backup Status
+                                <Icon name="sliders" class="h-5 w-5" />
+                                Site Settings Overview
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div class="space-y-4">
-                                <div class="grid grid-cols-2 gap-4">
-                                    <div class="text-center p-3 rounded-lg bg-muted/50">
-                                        <p class="text-sm font-medium text-muted-foreground">Last Backup</p>
-                                        <p class="text-lg font-bold">{{ backupStatus.last_backup ? formatRelativeTime(backupStatus.last_backup) : 'Never' }}</p>
+                            <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                                <div class="flex flex-col gap-2 p-4 rounded-lg border hover:shadow-md transition-shadow bg-gradient-to-br from-muted/30 to-transparent">
+                                    <div class="flex items-center justify-between">
+                                        <Icon name="home" class="h-5 w-5 text-blue-600" />
+                                        <Badge variant="outline" class="text-xs">Config</Badge>
                                     </div>
-                                    <div class="text-center p-3 rounded-lg bg-muted/50">
-                                        <p class="text-sm font-medium text-muted-foreground">Backup Size</p>
-                                        <p class="text-lg font-bold">{{ backupStatus.backup_size || '0 MB' }}</p>
+                                    <div>
+                                        <p class="text-xs font-medium text-muted-foreground mb-1">Site Name</p>
+                                        <p class="text-sm font-bold truncate">{{ siteSettingsOverview.site_name || 'Not Set' }}</p>
                                     </div>
                                 </div>
 
-                                <div class="flex items-center justify-between p-3 rounded-lg border">
-                                    <span class="text-sm font-medium">Status</span>
-                                    <Badge :variant="backupStatus.status === 'success' ? 'default' : backupStatus.status === 'no_backups' ? 'secondary' : 'destructive'">
-                                        {{ (backupStatus.status || 'unknown').toUpperCase().replace('_', ' ') }}
-                                    </Badge>
+                                <div class="flex flex-col gap-2 p-4 rounded-lg border hover:shadow-md transition-shadow bg-gradient-to-br from-muted/30 to-transparent">
+                                    <div class="flex items-center justify-between">
+                                        <Icon name="wrench" class="h-5 w-5 text-orange-600" />
+                                        <Badge :variant="siteSettingsOverview.maintenance_mode ? 'destructive' : 'default'" class="text-xs">
+                                            {{ siteSettingsOverview.maintenance_mode ? 'ON' : 'OFF' }}
+                                        </Badge>
+                                    </div>
+                                    <div>
+                                        <p class="text-xs font-medium text-muted-foreground mb-1">Maintenance Mode</p>
+                                        <p class="text-sm font-bold">{{ siteSettingsOverview.maintenance_mode ? 'Active' : 'Inactive' }}</p>
+                                    </div>
                                 </div>
 
-                                <div class="flex items-center justify-between p-3 rounded-lg border">
-                                    <span class="text-sm font-medium">Next Scheduled</span>
-                                    <span class="text-sm text-muted-foreground">{{ backupStatus.next_scheduled ? formatRelativeTime(backupStatus.next_scheduled) : 'Not scheduled' }}</span>
+                                <div class="flex flex-col gap-2 p-4 rounded-lg border hover:shadow-md transition-shadow bg-gradient-to-br from-muted/30 to-transparent">
+                                    <div class="flex items-center justify-between">
+                                        <Icon name="barChart2" class="h-5 w-5 text-green-600" />
+                                        <Badge :variant="siteSettingsOverview.analytics_enabled ? 'default' : 'secondary'" class="text-xs">
+                                            {{ siteSettingsOverview.analytics_enabled ? 'ON' : 'OFF' }}
+                                        </Badge>
+                                    </div>
+                                    <div>
+                                        <p class="text-xs font-medium text-muted-foreground mb-1">Analytics</p>
+                                        <p class="text-sm font-bold">{{ siteSettingsOverview.analytics_enabled ? 'Tracking Enabled' : 'Disabled' }}</p>
+                                    </div>
                                 </div>
 
-                                <div class="flex items-center justify-between p-3 rounded-lg border">
-                                    <span class="text-sm font-medium">Retention</span>
-                                    <span class="text-sm text-muted-foreground">{{ backupStatus.retention_days || 30 }} days</span>
+                                <div class="flex flex-col gap-2 p-4 rounded-lg border hover:shadow-md transition-shadow bg-gradient-to-br from-muted/30 to-transparent">
+                                    <div class="flex items-center justify-between">
+                                        <Icon name="image" class="h-5 w-5 text-purple-600" />
+                                        <Badge :variant="siteSettingsOverview.logo_configured ? 'default' : 'secondary'" class="text-xs">
+                                            {{ siteSettingsOverview.logo_configured ? 'SET' : 'NOT SET' }}
+                                        </Badge>
+                                    </div>
+                                    <div>
+                                        <p class="text-xs font-medium text-muted-foreground mb-1">Logo & Branding</p>
+                                        <p class="text-sm font-bold">{{ siteSettingsOverview.logo_configured ? 'Configured' : 'Not Configured' }}</p>
+                                    </div>
                                 </div>
+                            </div>
 
-                                <div v-if="backupStatus.backup_count" class="flex items-center justify-between p-3 rounded-lg border">
-                                    <span class="text-sm font-medium">Total Backups</span>
-                                    <span class="text-sm text-muted-foreground">{{ backupStatus.backup_count }} files</span>
+                            <!-- System Info Footer -->
+                            <div v-if="props.systemStats" class="mt-6 pt-6 border-t">
+                                <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 text-center">
+                                    <div v-if="props.systemStats.php_version" class="p-3 rounded-lg bg-muted/30">
+                                        <Icon name="code" class="h-4 w-4 mx-auto mb-1 text-muted-foreground" />
+                                        <p class="text-xs text-muted-foreground">PHP Version</p>
+                                        <p class="text-sm font-bold mt-1">{{ props.systemStats.php_version }}</p>
+                                    </div>
+                                    <div v-if="props.systemStats.laravel_version" class="p-3 rounded-lg bg-muted/30">
+                                        <Icon name="box" class="h-4 w-4 mx-auto mb-1 text-muted-foreground" />
+                                        <p class="text-xs text-muted-foreground">Laravel</p>
+                                        <p class="text-sm font-bold mt-1">{{ props.systemStats.laravel_version }}</p>
+                                    </div>
+                                    <div v-if="props.systemStats.system_uptime" class="p-3 rounded-lg bg-muted/30">
+                                        <Icon name="server" class="h-4 w-4 mx-auto mb-1 text-muted-foreground" />
+                                        <p class="text-xs text-muted-foreground">System Load</p>
+                                        <p class="text-sm font-bold mt-1">{{ props.systemStats.system_uptime }}</p>
+                                    </div>
                                 </div>
+                            </div>
+
+                            <!-- Quick Settings Actions -->
+                            <div class="mt-6 flex flex-wrap gap-2">
+                                <Link href="/admin/site-settings">
+                                    <Button variant="outline" size="sm">
+                                        <Icon name="settings" class="h-4 w-4 mr-2" />
+                                        Site Settings
+                                    </Button>
+                                </Link>
+                                <Link href="/admin/users">
+                                    <Button variant="outline" size="sm">
+                                        <Icon name="users" class="h-4 w-4 mr-2" />
+                                        User Management
+                                    </Button>
+                                </Link>
+                                <Link href="/admin/roles">
+                                    <Button variant="outline" size="sm">
+                                        <Icon name="shield" class="h-4 w-4 mr-2" />
+                                        Roles & Permissions
+                                    </Button>
+                                </Link>
+                                <Link href="/admin/database-backup">
+                                    <Button variant="outline" size="sm">
+                                        <Icon name="database" class="h-4 w-4 mr-2" />
+                                        Backup Management
+                                    </Button>
+                                </Link>
                             </div>
                         </CardContent>
                     </Card>
                 </div>
-
-                <!-- Site Settings Overview -->
-                <Card v-if="siteSettingsOverview">
-                    <CardHeader>
-                        <CardTitle class="flex items-center gap-2">
-                            <Icon name="settings" class="h-5 w-5" />
-                            Site Configuration
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                            <div class="flex items-center justify-between p-3 rounded-lg border">
-                                <span class="text-sm font-medium">Site Name</span>
-                                <span class="text-sm text-muted-foreground">{{ siteSettingsOverview.site_name }}</span>
-                            </div>
-                            <div class="flex items-center justify-between p-3 rounded-lg border">
-                                <span class="text-sm font-medium">Maintenance Mode</span>
-                                <Badge :variant="siteSettingsOverview.maintenance_mode ? 'destructive' : 'default'">
-                                    {{ siteSettingsOverview.maintenance_mode ? 'ON' : 'OFF' }}
-                                </Badge>
-                            </div>
-                            <div class="flex items-center justify-between p-3 rounded-lg border">
-                                <span class="text-sm font-medium">Analytics</span>
-                                <Badge :variant="siteSettingsOverview.analytics_enabled ? 'default' : 'secondary'">
-                                    {{ siteSettingsOverview.analytics_enabled ? 'Enabled' : 'Disabled' }}
-                                </Badge>
-                            </div>
-                            <div class="flex items-center justify-between p-3 rounded-lg border">
-                                <span class="text-sm font-medium">Logo</span>
-                                <Badge :variant="siteSettingsOverview.logo_configured ? 'default' : 'secondary'">
-                                    {{ siteSettingsOverview.logo_configured ? 'Set' : 'Not Set' }}
-                                </Badge>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
             </div>
 
             <!-- Quick Actions -->
