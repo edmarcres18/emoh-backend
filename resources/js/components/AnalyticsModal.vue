@@ -200,22 +200,24 @@ const clientMetrics = computed(() => {
 
 // Location performance data
 const locationPerformance = computed(() => {
-    if (!props.locationStats) return [];
+    if (!props.locationStats || props.locationStats.length === 0) return [];
 
+    const maxCount = Math.max(...props.locationStats.map(l => l.properties_count));
     return props.locationStats.slice(0, 10).map((location, index) => ({
         ...location,
         rank: index + 1,
-        performance: Math.round((location.properties_count / Math.max(...props.locationStats.map(l => l.properties_count))) * 100)
+        performance: Math.round((location.properties_count / maxCount) * 100)
     }));
 });
 
 // Category performance data
 const categoryPerformance = computed(() => {
-    if (!props.categoryStats) return [];
+    if (!props.categoryStats || props.categoryStats.length === 0) return [];
 
+    const maxCount = Math.max(...props.categoryStats.map(c => c.properties_count));
     return props.categoryStats.map(category => ({
         ...category,
-        performance: Math.round((category.properties_count / Math.max(...props.categoryStats.map(c => c.properties_count))) * 100)
+        performance: Math.round((category.properties_count / maxCount) * 100)
     }));
 });
 
@@ -281,128 +283,171 @@ onMounted(() => {
 
 <template>
     <Dialog :open="isOpen" @update:open="emit('close')">
-        <DialogContent class="max-w-7xl max-h-[90vh] overflow-hidden">
-            <DialogHeader class="flex-shrink-0">
-                <div class="flex items-center justify-between">
-                    <DialogTitle class="flex items-center gap-2 text-xl">
-                        <Icon name="barChart3" class="h-6 w-6" />
-                        Analytics & Performance Dashboard
+        <DialogContent class="max-w-7xl max-h-[90vh] overflow-hidden flex flex-col">
+            <DialogHeader class="flex-shrink-0 pb-4">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <DialogTitle class="flex items-center gap-2 text-xl sm:text-2xl font-bold">
+                        <div class="p-2 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600">
+                            <Icon name="barChart3" class="h-5 w-5 sm:h-6 sm:w-6 text-white" />
+                        </div>
+                        <span class="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                            Analytics & Performance
+                        </span>
                     </DialogTitle>
                     <div class="flex items-center gap-2">
-                        <Button variant="outline" size="sm" @click="refreshData" :disabled="loading">
-                            <Icon name="refreshCw" :class="loading ? 'h-4 w-4 mr-2 animate-spin' : 'h-4 w-4 mr-2'" />
-                            Refresh
+                        <Button variant="outline" size="sm" @click="refreshData" :disabled="loading" class="transition-all hover:scale-105">
+                            <Icon name="refreshCw" :class="loading ? 'h-4 w-4 sm:mr-2 animate-spin' : 'h-4 w-4 sm:mr-2'" />
+                            <span class="hidden sm:inline">Refresh</span>
                         </Button>
-                        <Button variant="outline" size="sm" @click="exportReport">
-                            <Icon name="download" class="h-4 w-4 mr-2" />
-                            Export
+                        <Button variant="outline" size="sm" @click="exportReport" class="transition-all hover:scale-105">
+                            <Icon name="download" class="h-4 w-4 sm:mr-2" />
+                            <span class="hidden sm:inline">Export</span>
                         </Button>
                     </div>
                 </div>
             </DialogHeader>
 
             <!-- Tab Navigation -->
-            <div class="flex-shrink-0 border-b">
-                <nav class="flex space-x-8 overflow-x-auto">
+            <div class="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 -mx-6 px-6">
+                <nav class="flex space-x-4 sm:space-x-8 overflow-x-auto scrollbar-hide pb-px">
                     <button
                         v-for="tab in tabs"
                         :key="tab.id"
                         @click="activeTab = tab.id"
                         :class="[
-                            'flex items-center gap-2 px-1 py-4 text-sm font-medium border-b-2 whitespace-nowrap transition-colors',
+                            'flex items-center gap-2 px-2 sm:px-4 py-3 sm:py-4 text-sm font-medium border-b-2 whitespace-nowrap transition-all duration-200',
                             activeTab === tab.id
-                                ? 'border-primary text-primary'
-                                : 'border-transparent text-muted-foreground hover:text-foreground hover:border-gray-300'
+                                ? 'border-primary text-primary scale-105'
+                                : 'border-transparent text-muted-foreground hover:text-foreground hover:border-gray-300 hover:scale-102'
                         ]"
                     >
-                        <Icon :name="tab.icon" class="h-4 w-4" />
-                        {{ tab.label }}
+                        <Icon :name="tab.icon" class="h-4 w-4 flex-shrink-0" />
+                        <span>{{ tab.label }}</span>
                     </button>
                 </nav>
             </div>
 
             <!-- Tab Content -->
-            <div class="flex-1 overflow-y-auto p-1">
+            <div class="flex-1 overflow-y-auto p-4 sm:p-6 -mx-6 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600">
                 <!-- Overview Tab -->
-                <div v-if="activeTab === 'overview'" class="space-y-6">
+                <div v-if="activeTab === 'overview'" class="space-y-6 animate-in fade-in duration-500">
                     <!-- Key Metrics Grid -->
-                    <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                        <Card v-for="metric in financialMetrics" :key="metric.title" class="hover:shadow-md transition-shadow">
-                            <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle class="text-sm font-medium">{{ metric.title }}</CardTitle>
-                                <div class="rounded-full p-2 bg-primary/10">
-                                    <Icon name="dollarSign" class="h-4 w-4 text-primary" />
+                    <div v-if="financialMetrics.length > 0" class="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+                        <Card 
+                            v-for="(metric, index) in financialMetrics" 
+                            :key="metric.title" 
+                            class="group hover:shadow-xl transition-all duration-300 hover:-translate-y-1 overflow-hidden border-l-4"
+                            :class="`border-l-${metric.color.split('-')[1]}-500`"
+                        >
+                            <div class="absolute top-0 right-0 w-24 h-24 opacity-5 bg-gradient-to-bl" :class="`from-${metric.color.split('-')[1]}-500 to-transparent`"></div>
+                            <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2 relative">
+                                <CardTitle class="text-xs sm:text-sm font-medium text-muted-foreground">{{ metric.title }}</CardTitle>
+                                <div class="rounded-lg p-2 transition-transform group-hover:scale-110 group-hover:rotate-6" :class="`bg-${metric.color.split('-')[1]}-500/10`">
+                                    <Icon name="dollarSign" :class="`h-4 w-4 ${metric.color}`" />
                                 </div>
                             </CardHeader>
-                            <CardContent>
-                                <div class="text-2xl font-bold" :class="metric.color">{{ metric.value }}</div>
-                                <p class="text-xs text-muted-foreground">{{ metric.description }}</p>
-                                <div class="flex items-center gap-1 mt-2">
+                            <CardContent class="relative">
+                                <div class="text-2xl sm:text-3xl font-bold mb-1" :class="metric.color">{{ metric.value }}</div>
+                                <p class="text-xs text-muted-foreground mb-3">{{ metric.description }}</p>
+                                <div class="flex items-center gap-1 pt-3 border-t">
                                     <Icon
                                         :name="getTrendIcon(metric.trendUp)"
-                                        :class="['h-3 w-3', getTrendColor(metric.trendUp)]"
+                                        :class="`h-3 w-3 ${getTrendColor(metric.trendUp)}`"
                                     />
-                                    <span :class="['text-xs font-medium', getTrendColor(metric.trendUp)]">
+                                    <span :class="`text-xs font-semibold ${getTrendColor(metric.trendUp)}`">
                                         {{ metric.trend }}
                                     </span>
+                                    <span class="text-xs text-muted-foreground ml-1">vs last month</span>
                                 </div>
                             </CardContent>
                         </Card>
                     </div>
+                    <div v-else class="text-center py-16 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 rounded-xl border-2 border-dashed">
+                        <Icon name="barChart3" class="h-16 w-16 mx-auto text-muted-foreground opacity-30 mb-4" />
+                        <p class="text-lg font-semibold text-muted-foreground">No Financial Data Available</p>
+                        <p class="text-sm text-muted-foreground mt-2">Metrics will appear when data is available</p>
+                    </div>
 
                     <!-- Performance Charts -->
-                    <div class="grid gap-6 lg:grid-cols-2">
+                    <div class="grid gap-4 sm:gap-6 lg:grid-cols-2">
                         <!-- Property Performance Chart -->
-                        <Card>
-                            <CardHeader>
-                                <CardTitle class="flex items-center gap-2">
-                                    <Icon name="trendingUp" class="h-5 w-5" />
-                                    Property Performance (6 Months)
+                        <Card class="hover:shadow-xl transition-shadow duration-300 overflow-hidden">
+                            <CardHeader class="pb-3 bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-950 dark:to-cyan-950">
+                                <CardTitle class="flex items-center gap-2 text-base sm:text-lg">
+                                    <div class="p-1.5 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-600 shadow-md">
+                                        <Icon name="trendingUp" class="h-4 w-4 sm:h-5 sm:w-5 text-white" />
+                                    </div>
+                                    <div class="flex flex-col">
+                                        <span>Property Performance</span>
+                                        <span class="text-xs font-normal text-muted-foreground">Last 6 months trend</span>
+                                    </div>
                                 </CardTitle>
                             </CardHeader>
-                            <CardContent>
-                                <div class="space-y-4">
-                                    <div v-for="item in chartData" :key="item.month"
-                                         class="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors">
-                                        <div class="flex items-center gap-3">
-                                            <div class="w-3 h-3 rounded-full bg-blue-500"></div>
-                                            <span class="text-sm font-medium">{{ item.month }} {{ item.year }}</span>
+                            <CardContent class="pt-6">
+                                <div v-if="chartData.length > 0" class="space-y-3">
+                                    <div v-for="(item, index) in chartData" :key="item.month"
+                                         class="group flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-lg border-2 border-transparent hover:border-blue-200 dark:hover:border-blue-800 hover:bg-gradient-to-r hover:from-blue-50 hover:to-cyan-50 dark:hover:from-blue-950 dark:hover:to-cyan-950 transition-all duration-300 cursor-pointer hover:scale-102">
+                                        <div class="flex items-center gap-3 mb-2 sm:mb-0">
+                                            <div class="flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-cyan-600 text-white font-bold text-xs shadow-md group-hover:scale-110 transition-transform">
+                                                {{ index + 1 }}
+                                            </div>
+                                            <div>
+                                                <span class="text-sm font-semibold group-hover:text-primary transition-colors block">{{ item.month }} {{ item.year }}</span>
+                                                <div class="flex items-center gap-1.5 mt-1">
+                                                    <Icon name="home" class="h-3 w-3 text-muted-foreground" />
+                                                    <span class="text-xs text-muted-foreground">{{ item.properties }} properties</span>
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div class="flex items-center gap-4 text-sm">
-                                            <span class="text-muted-foreground">{{ item.properties }} properties</span>
-                                            <span class="font-medium text-green-600">{{ formatCurrency(item.revenue) }}</span>
+                                        <div class="pl-11 sm:pl-0">
+                                            <span class="text-base sm:text-lg font-bold text-green-600 dark:text-green-400">{{ formatCurrency(item.revenue) }}</span>
                                         </div>
                                     </div>
+                                </div>
+                                <div v-else class="text-center py-12 bg-gray-50 dark:bg-gray-900 rounded-lg">
+                                    <Icon name="trendingUp" class="h-12 w-12 mx-auto text-muted-foreground opacity-30 mb-3" />
+                                    <p class="text-sm font-medium text-muted-foreground">No Performance Data</p>
+                                    <p class="text-xs text-muted-foreground mt-1">Data will appear when available</p>
                                 </div>
                             </CardContent>
                         </Card>
 
                         <!-- Top Locations -->
-                        <Card>
-                            <CardHeader>
-                                <CardTitle class="flex items-center gap-2">
-                                    <Icon name="mapPin" class="h-5 w-5" />
-                                    Top Performing Locations
+                        <Card class="hover:shadow-xl transition-shadow duration-300 overflow-hidden">
+                            <CardHeader class="pb-3 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950 dark:to-pink-950">
+                                <CardTitle class="flex items-center gap-2 text-base sm:text-lg">
+                                    <div class="p-1.5 rounded-lg bg-gradient-to-br from-purple-500 to-pink-600 shadow-md">
+                                        <Icon name="mapPin" class="h-4 w-4 sm:h-5 sm:w-5 text-white" />
+                                    </div>
+                                    <div class="flex flex-col">
+                                        <span>Top Locations</span>
+                                        <span class="text-xs font-normal text-muted-foreground">Best performing areas</span>
+                                    </div>
                                 </CardTitle>
                             </CardHeader>
-                            <CardContent>
-                                <div class="space-y-3">
-                                    <div v-for="location in locationPerformance.slice(0, 5)" :key="location.name"
-                                         class="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors">
-                                        <div class="flex items-center gap-3">
-                                            <div class="w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold">
+                            <CardContent class="pt-6">
+                                <div v-if="locationPerformance.length > 0" class="space-y-3">
+                                    <div v-for="(location, index) in locationPerformance.slice(0, 5)" :key="location.name"
+                                         class="group flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-lg border-2 border-transparent hover:border-purple-200 dark:hover:border-purple-800 hover:bg-gradient-to-r hover:from-purple-50 hover:to-pink-50 dark:hover:from-purple-950 dark:hover:to-pink-950 transition-all duration-300 cursor-pointer hover:scale-102">
+                                        <div class="flex items-center gap-3 mb-2 sm:mb-0">
+                                            <div class="flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-600 text-white font-bold text-xs shadow-md group-hover:scale-110 transition-transform">
                                                 {{ location.rank }}
                                             </div>
-                                            <div>
-                                                <p class="font-medium">{{ location.name }}</p>
-                                                <p class="text-sm text-muted-foreground">{{ location.code }}</p>
+                                            <div class="min-w-0">
+                                                <p class="font-semibold group-hover:text-primary transition-colors truncate">{{ location.name }}</p>
+                                                <p class="text-xs text-muted-foreground uppercase tracking-wide">{{ location.code }}</p>
                                             </div>
                                         </div>
-                                        <div class="text-right">
-                                            <p class="font-medium">{{ location.properties_count }} properties</p>
-                                            <p class="text-sm text-muted-foreground">{{ formatCurrency(location.avg_price) }} avg</p>
+                                        <div class="pl-11 sm:pl-0 sm:text-right">
+                                            <p class="font-semibold text-sm">{{ location.properties_count }} properties</p>
+                                            <p class="text-sm text-green-600 dark:text-green-400 font-semibold">{{ formatCurrency(location.avg_price) }} avg</p>
                                         </div>
                                     </div>
+                                </div>
+                                <div v-else class="text-center py-12 bg-gray-50 dark:bg-gray-900 rounded-lg">
+                                    <Icon name="mapPin" class="h-12 w-12 mx-auto text-muted-foreground opacity-30 mb-3" />
+                                    <p class="text-sm font-medium text-muted-foreground">No Location Data</p>
+                                    <p class="text-xs text-muted-foreground mt-1">Data will appear when available</p>
                                 </div>
                             </CardContent>
                         </Card>
@@ -410,67 +455,90 @@ onMounted(() => {
                 </div>
 
                 <!-- Properties Tab -->
-                <div v-if="activeTab === 'properties'" class="space-y-6">
-                    <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                        <Card v-for="metric in propertyMetrics" :key="metric.title" class="hover:shadow-md transition-shadow">
+                <div v-if="activeTab === 'properties'" class="space-y-6 animate-in fade-in duration-500">
+                    <div v-if="propertyMetrics.length > 0" class="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+                        <Card 
+                            v-for="(metric, index) in propertyMetrics" 
+                            :key="metric.title" 
+                            class="group hover:shadow-xl transition-all duration-300 hover:-translate-y-1 bg-gradient-to-br from-white to-blue-50 dark:from-gray-900 dark:to-blue-950 border-l-4 border-l-blue-500"
+                        >
                             <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle class="text-sm font-medium">{{ metric.title }}</CardTitle>
-                                <div class="rounded-full p-2 bg-blue-500/10">
-                                    <Icon name="home" class="h-4 w-4 text-blue-500" />
+                                <CardTitle class="text-xs sm:text-sm font-medium text-muted-foreground">{{ metric.title }}</CardTitle>
+                                <div class="rounded-lg p-2 bg-gradient-to-br from-blue-500 to-cyan-600 group-hover:scale-110 transition-transform shadow-md">
+                                    <Icon name="home" class="h-4 w-4 text-white" />
                                 </div>
                             </CardHeader>
                             <CardContent>
-                                <div class="text-2xl font-bold">{{ metric.value }}</div>
-                                <p class="text-xs text-muted-foreground">{{ metric.description }}</p>
-                                <div class="flex items-center gap-1 mt-2">
+                                <div class="text-2xl sm:text-3xl font-bold text-blue-600 dark:text-blue-400 mb-1">{{ metric.value }}</div>
+                                <p class="text-xs text-muted-foreground mb-3">{{ metric.description }}</p>
+                                <div class="flex items-center gap-1 pt-3 border-t border-blue-100 dark:border-blue-900">
                                     <Icon
                                         :name="getTrendIcon(metric.trendUp)"
-                                        :class="['h-3 w-3', getTrendColor(metric.trendUp)]"
+                                        :class="`h-3 w-3 ${getTrendColor(metric.trendUp)}`"
                                     />
-                                    <span :class="['text-xs font-medium', getTrendColor(metric.trendUp)]">
+                                    <span :class="`text-xs font-semibold ${getTrendColor(metric.trendUp)}`">
                                         {{ metric.trend }}
                                     </span>
                                 </div>
                             </CardContent>
                         </Card>
                     </div>
+                    <div v-else class="text-center py-16 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 rounded-xl border-2 border-dashed">
+                        <Icon name="home" class="h-16 w-16 mx-auto text-muted-foreground opacity-30 mb-4" />
+                        <p class="text-lg font-semibold text-muted-foreground">No Property Data Available</p>
+                        <p class="text-sm text-muted-foreground mt-2">Property metrics will appear when data is available</p>
+                    </div>
 
                     <!-- Category Performance -->
-                    <Card>
-                        <CardHeader>
-                            <CardTitle class="flex items-center gap-2">
-                                <Icon name="tag" class="h-5 w-5" />
-                                Property Categories Performance
+                    <Card v-if="categoryPerformance.length > 0" class="hover:shadow-xl transition-shadow duration-300 overflow-hidden">
+                        <CardHeader class="pb-3 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950 dark:to-emerald-950">
+                            <CardTitle class="flex items-center gap-2 text-base sm:text-lg">
+                                <div class="p-1.5 rounded-lg bg-gradient-to-br from-green-500 to-emerald-600 shadow-md">
+                                    <Icon name="tag" class="h-4 w-4 sm:h-5 sm:w-5 text-white" />
+                                </div>
+                                <div class="flex flex-col">
+                                    <span>Category Performance</span>
+                                    <span class="text-xs font-normal text-muted-foreground">Performance by property type</span>
+                                </div>
                             </CardTitle>
                         </CardHeader>
-                        <CardContent>
-                            <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                                <div v-for="category in categoryPerformance" :key="category.name"
-                                     class="rounded-lg border p-4 hover:shadow-md transition-shadow">
-                                    <div class="flex items-center gap-2 mb-2">
-                                        <div class="w-2 h-2 rounded-full bg-blue-500"></div>
-                                        <h4 class="font-medium">{{ category.name }}</h4>
+                        <CardContent class="pt-6">
+                            <div class="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+                                <div v-for="(category, index) in categoryPerformance" :key="category.name"
+                                     class="group rounded-xl border-2 p-5 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 bg-gradient-to-br from-white to-green-50 dark:from-gray-900 dark:to-green-950 hover:border-green-300 dark:hover:border-green-700">
+                                    <div class="flex items-center gap-2 mb-3">
+                                        <div class="w-2 h-2 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 animate-pulse"></div>
+                                        <h4 class="font-bold text-base group-hover:text-primary transition-colors">{{ category.name }}</h4>
                                     </div>
-                                    <p class="text-sm text-muted-foreground mb-3">{{ category.description }}</p>
-                                    <div class="space-y-2">
-                                        <div class="flex justify-between text-sm">
-                                            <span class="text-muted-foreground">Properties</span>
-                                            <span class="font-medium">{{ category.properties_count }}</span>
+                                    <p class="text-xs sm:text-sm text-muted-foreground mb-4 line-clamp-2 min-h-[2.5rem]">{{ category.description }}</p>
+                                    <div class="space-y-3">
+                                        <div class="flex justify-between items-center text-sm p-2.5 rounded-lg bg-white/50 dark:bg-gray-800/50">
+                                            <span class="text-muted-foreground flex items-center gap-1.5">
+                                                <Icon name="home" class="h-3.5 w-3.5" />
+                                                Properties
+                                            </span>
+                                            <span class="font-bold">{{ category.properties_count }}</span>
                                         </div>
-                                        <div class="flex justify-between text-sm">
-                                            <span class="text-muted-foreground">Total Revenue</span>
-                                            <span class="font-medium text-green-600">{{ formatCurrency(category.total_revenue) }}</span>
+                                        <div class="flex justify-between items-center text-sm p-2.5 rounded-lg bg-green-50/50 dark:bg-green-950/50">
+                                            <span class="text-muted-foreground flex items-center gap-1.5">
+                                                <Icon name="dollarSign" class="h-3.5 w-3.5" />
+                                                Total Revenue
+                                            </span>
+                                            <span class="font-bold text-green-600 dark:text-green-400">{{ formatCurrency(category.total_revenue) }}</span>
                                         </div>
-                                        <div class="flex justify-between text-sm">
-                                            <span class="text-muted-foreground">Avg Price</span>
-                                            <span class="font-medium">{{ formatCurrency(category.avg_price) }}</span>
+                                        <div class="flex justify-between items-center text-sm p-2.5 rounded-lg bg-blue-50/50 dark:bg-blue-950/50">
+                                            <span class="text-muted-foreground flex items-center gap-1.5">
+                                                <Icon name="trendingUp" class="h-3.5 w-3.5" />
+                                                Avg Price
+                                            </span>
+                                            <span class="font-bold">{{ formatCurrency(category.avg_price) }}</span>
                                         </div>
-                                        <div class="mt-2">
-                                            <div class="flex justify-between text-xs text-muted-foreground mb-1">
-                                                <span>Performance</span>
-                                                <span>{{ category.performance }}%</span>
+                                        <div class="mt-4 pt-4 border-t">
+                                            <div class="flex justify-between text-xs font-medium text-muted-foreground mb-2">
+                                                <span>Performance Score</span>
+                                                <span class="text-primary">{{ category.performance }}%</span>
                                             </div>
-                                            <Progress :value="category.performance" class="h-2" />
+                                            <Progress :value="category.performance" class="h-2.5" />
                                         </div>
                                     </div>
                                 </div>
@@ -480,29 +548,38 @@ onMounted(() => {
                 </div>
 
                 <!-- Rentals Tab -->
-                <div v-if="activeTab === 'rentals'" class="space-y-6">
-                    <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                        <Card v-for="metric in rentalMetrics" :key="metric.title" class="hover:shadow-md transition-shadow">
+                <div v-if="activeTab === 'rentals'" class="space-y-6 animate-in fade-in duration-500">
+                    <div v-if="rentalMetrics.length > 0" class="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+                        <Card 
+                            v-for="(metric, index) in rentalMetrics" 
+                            :key="metric.title" 
+                            class="group hover:shadow-xl transition-all duration-300 hover:-translate-y-1 bg-gradient-to-br from-white to-green-50 dark:from-gray-900 dark:to-green-950 border-l-4 border-l-green-500"
+                        >
                             <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle class="text-sm font-medium">{{ metric.title }}</CardTitle>
-                                <div class="rounded-full p-2 bg-green-500/10">
-                                    <Icon name="fileText" class="h-4 w-4 text-green-500" />
+                                <CardTitle class="text-xs sm:text-sm font-medium text-muted-foreground">{{ metric.title }}</CardTitle>
+                                <div class="rounded-lg p-2 bg-gradient-to-br from-green-500 to-emerald-600 group-hover:scale-110 transition-transform shadow-md">
+                                    <Icon name="fileText" class="h-4 w-4 text-white" />
                                 </div>
                             </CardHeader>
                             <CardContent>
-                                <div class="text-2xl font-bold">{{ metric.value }}</div>
-                                <p class="text-xs text-muted-foreground">{{ metric.description }}</p>
-                                <div class="flex items-center gap-1 mt-2">
+                                <div class="text-2xl sm:text-3xl font-bold text-green-600 dark:text-green-400 mb-1">{{ metric.value }}</div>
+                                <p class="text-xs text-muted-foreground mb-3">{{ metric.description }}</p>
+                                <div class="flex items-center gap-1 pt-3 border-t border-green-100 dark:border-green-900">
                                     <Icon
                                         :name="getTrendIcon(metric.trendUp)"
-                                        :class="['h-3 w-3', getTrendColor(metric.trendUp)]"
+                                        :class="`h-3 w-3 ${getTrendColor(metric.trendUp)}`"
                                     />
-                                    <span :class="['text-xs font-medium', getTrendColor(metric.trendUp)]">
+                                    <span :class="`text-xs font-semibold ${getTrendColor(metric.trendUp)}`">
                                         {{ metric.trend }}
                                     </span>
                                 </div>
                             </CardContent>
                         </Card>
+                    </div>
+                    <div v-else class="text-center py-16 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 rounded-xl border-2 border-dashed">
+                        <Icon name="fileText" class="h-16 w-16 mx-auto text-muted-foreground opacity-30 mb-4" />
+                        <p class="text-lg font-semibold text-muted-foreground">No Rental Data Available</p>
+                        <p class="text-sm text-muted-foreground mt-2">Rental metrics will appear when data is available</p>
                     </div>
 
                     <!-- Rental Status Distribution -->
