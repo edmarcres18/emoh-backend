@@ -4,6 +4,7 @@ use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\LocationsController;
 use App\Http\Controllers\PropertyController;
+use App\Http\Controllers\GuestInquiriesController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\PermissionController;
 use App\Http\Controllers\Admin\UserController;
@@ -46,6 +47,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::resource('categories', CategoryController::class);
     Route::resource('locations', LocationsController::class);
+
+    // Guest Inquiries routes
+    Route::get('guest-inquiries', [GuestInquiriesController::class, 'index'])->name('guest-inquiries.index');
+    Route::get('guest-inquiries/{id}', [GuestInquiriesController::class, 'show'])->name('guest-inquiries.show');
+    Route::patch('guest-inquiries/{id}/status', [GuestInquiriesController::class, 'updateStatus'])->name('guest-inquiries.update-status');
+    Route::delete('guest-inquiries/{id}', [GuestInquiriesController::class, 'destroy'])->name('guest-inquiries.destroy');
 
     // Property routes
     Route::resource('properties', PropertyController::class);
