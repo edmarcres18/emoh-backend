@@ -10,7 +10,7 @@ import properties from '@/routes/properties';
 import admin from '@/routes/admin';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/vue3';
-import { BookOpen, Folder, LayoutGrid, Tags, Navigation, House, Lock, Users, Shield, Settings, Home, Database } from 'lucide-vue-next';
+import { BookOpen, Folder, LayoutGrid, Tags, Navigation, House, Lock, Users, Shield, Settings, Home, Database, Mail } from 'lucide-vue-next';
 import AppLogo from './AppLogo.vue';
 import { useAuth } from '@/composables/useAuth';
 import { computed, onMounted } from 'vue';
@@ -65,6 +65,11 @@ const mainNavItems = computed((): NavItem[] => {
     // Add admin management items based on role
     if (isAdminOrSystemAdmin.value) {
         items.push(
+            {
+                title: 'Guest Inquiries',
+                href: '/guest-inquiries',
+                icon: Mail,
+            },
             {
                 title: 'Clients',
                 href: admin.clients.index(),
