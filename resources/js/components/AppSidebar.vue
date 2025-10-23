@@ -10,7 +10,7 @@ import properties from '@/routes/properties';
 import admin from '@/routes/admin';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/vue3';
-import { BookOpen, Folder, LayoutGrid, Tags, Navigation, House, Lock, Users, Shield, Settings, Home, Database, MessageSquare } from 'lucide-vue-next';
+import { BookOpen, Folder, LayoutGrid, Tags, Navigation, House, Lock, Users, Shield, Settings, Home, Database } from 'lucide-vue-next';
 import AppLogo from './AppLogo.vue';
 import { useAuth } from '@/composables/useAuth';
 import { computed, onMounted } from 'vue';
@@ -74,11 +74,6 @@ const mainNavItems = computed((): NavItem[] => {
                 title: 'Rented',
                 href: admin.rented.index(),
                 icon: Home,
-            },
-            {
-                title: 'Guest Inquiries',
-                href: '/admin/guest-inquiries',
-                icon: MessageSquare,
             },
             {
                 title: 'Roles',

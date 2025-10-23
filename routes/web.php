@@ -11,7 +11,6 @@ use App\Http\Controllers\Admin\ClientController;
 use App\Http\Controllers\Admin\SiteSettingsController;
 use App\Http\Controllers\Admin\RentedController;
 use App\Http\Controllers\Admin\DatabaseBackupController;
-use App\Http\Controllers\Admin\GuestInquiryAdminController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -129,11 +128,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('rented/{rented}/renew', [RentedController::class, 'renew'])->name('admin.rented.renew');
         Route::post('rented/{rented}/end', [RentedController::class, 'end'])->name('admin.rented.end');
 
-        // Guest Inquiries routes
-        Route::get('guest-inquiries', [GuestInquiryAdminController::class, 'index'])->name('admin.guest-inquiries.index');
-        Route::get('guest-inquiries/{inquiry}', [GuestInquiryAdminController::class, 'show'])->name('admin.guest-inquiries.show');
-        Route::patch('guest-inquiries/{inquiry}/status', [GuestInquiryAdminController::class, 'updateStatus'])->name('admin.guest-inquiries.update-status');
-        Route::delete('guest-inquiries/{inquiry}', [GuestInquiryAdminController::class, 'destroy'])->name('admin.guest-inquiries.destroy');
 
         // API routes for roles management
         Route::prefix('api')->group(function () {
@@ -181,9 +175,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::get('properties/{property}/rate', [RentedController::class, 'getPropertyRate'])->name('admin.api.properties.rate');
             Route::post('rented/validate', [RentedController::class, 'validateRental'])->name('admin.api.rented.validate');
             Route::post('properties/sync-statuses', [RentedController::class, 'syncPropertyStatuses'])->name('admin.api.properties.sync-statuses');
-            
-            // API routes for guest inquiries
-            Route::get('guest-inquiries/statistics', [GuestInquiryAdminController::class, 'statistics'])->name('admin.api.guest-inquiries.statistics');
         });
     });
 

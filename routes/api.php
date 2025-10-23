@@ -6,7 +6,6 @@ use App\Http\Controllers\Admin\SiteSettingsController;
 use App\Http\Controllers\Api\ClientAuthController;
 use App\Http\Controllers\Api\PropertyApiController;
 use App\Http\Controllers\Api\SiteSettingApiController;
-use App\Http\Controllers\Api\GuestInquiryController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -168,11 +167,4 @@ Route::prefix('site-settings')->group(function () {
         Route::put('/social-whatsapp', [SiteSettingApiController::class, 'updateSocialWhatsapp']);
         Route::put('/google-analytics-id', [SiteSettingApiController::class, 'updateGoogleAnalyticsId']);
     });
-});
-
-// Guest Inquiry Routes
-Route::prefix('guest-inquiries')->group(function () {
-    // Public route for submitting inquiries with strict rate limiting
-    Route::post('/submit', [GuestInquiryController::class, 'store'])
-        ->middleware('throttle:3,15'); // 3 requests per 15 minutes
 });
