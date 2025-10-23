@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\SiteSettingsController;
 use App\Http\Controllers\Api\ClientAuthController;
 use App\Http\Controllers\Api\PropertyApiController;
 use App\Http\Controllers\Api\SiteSettingApiController;
+use App\Http\Controllers\Api\GuestInquiryController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -166,5 +167,20 @@ Route::prefix('site-settings')->group(function () {
         Route::put('/social-viber', [SiteSettingApiController::class, 'updateSocialViber']);
         Route::put('/social-whatsapp', [SiteSettingApiController::class, 'updateSocialWhatsapp']);
         Route::put('/google-analytics-id', [SiteSettingApiController::class, 'updateGoogleAnalyticsId']);
+    });
+});
+
+// Guest Inquiry Routes - Contact Form Submissions
+Route::prefix('guest-inquiries')->group(function () {
+    // Public route - Contact form submission with strict rate limiting
+    Route::post('/submit', [GuestInquiryController::class, 'submit'])->middleware('throttle:5,60'); // 5 requests per hour
+
+    // Protected routes - Admin only
+    Route::middleware(['auth:sanctum'])->group(function () {
+        Route::get('/', [GuestInquiryController::class, 'index']); // List all inquiries
+        Route::get('/stats', [GuestInquiryController::class, 'stats']); // Get statistics
+        Route::get('/{id}', [GuestInquiryController::class, 'show']); // View single inquiry
+        Route::patch('/{id}/status', [GuestInquiryController::class, 'updateStatus']); // Update status
+        Route::delete('/{id}', [GuestInquiryController::class, 'destroy']); // Delete inquiry
     });
 });
