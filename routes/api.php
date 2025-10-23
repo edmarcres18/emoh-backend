@@ -6,20 +6,12 @@ use App\Http\Controllers\Admin\SiteSettingsController;
 use App\Http\Controllers\Api\ClientAuthController;
 use App\Http\Controllers\Api\PropertyApiController;
 use App\Http\Controllers\Api\SiteSettingApiController;
-use App\Http\Controllers\Api\GuestInquiryController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware('auth:sanctum');
 
 Route::get('/contact-info', [SiteSettingsController::class, 'getContactInfo']);
-
-// Guest Inquiry Routes - Public access with rate limiting and CAPTCHA protection
-Route::prefix('guest-inquiry')->middleware(['throttle:60,1'])->group(function () {
-    Route::get('/captcha', [GuestInquiryController::class, 'getCaptcha']);
-    Route::post('/submit', [GuestInquiryController::class, 'store']);
-    Route::get('/rate-limit-status', [GuestInquiryController::class, 'getRateLimitStatus']);
-});
 
 // Categories and Locations API Routes - Public access for property search
 Route::middleware(['throttle:60,1'])->group(function () {
