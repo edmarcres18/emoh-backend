@@ -120,7 +120,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import { Head, router } from '@inertiajs/vue3';
-import AppLayout from '@/Layouts/AppLayout.vue';
+import AppLayout from '@/layouts/AppLayout.vue';
 
 const props = defineProps({
     inquiries: Object,
