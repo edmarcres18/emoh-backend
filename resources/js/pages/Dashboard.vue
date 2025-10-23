@@ -400,12 +400,6 @@ onMounted(() => {
                             Here's your comprehensive real estate management overview
                         </p>
                     </div>
-                    <div class="flex items-center gap-2">
-                        <Button variant="outline" size="sm" @click="refreshData" :disabled="loading">
-                            <Icon name="refreshCw" :class="loading ? 'h-4 w-4 mr-2 animate-spin' : 'h-4 w-4 mr-2'" />
-                            Refresh
-                        </Button>
-                    </div>
                 </div>
 
                 <!-- User Role Badge -->
@@ -858,18 +852,6 @@ onMounted(() => {
                         <p class="text-sm text-muted-foreground mt-1">
                             Monitor and manage your system resources and configurations
                         </p>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <Button variant="outline" size="sm" @click="refreshData" :disabled="loading">
-                            <Icon name="refreshCw" :class="loading ? 'h-4 w-4 mr-2 animate-spin' : 'h-4 w-4 mr-2'" />
-                            Refresh Stats
-                        </Button>
-                        <Link href="/admin">
-                            <Button size="sm">
-                                <Icon name="settings" class="h-4 w-4 mr-2" />
-                                Admin Panel
-                            </Button>
-                        </Link>
                     </div>
                 </div>
 
