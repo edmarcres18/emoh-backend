@@ -154,6 +154,224 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Rental Statistics Section -->
+            <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+                <div class="bg-white dark:bg-gray-900 rounded-xl shadow-sm ring-1 ring-gray-200 dark:ring-gray-800 p-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">Total Rentals</p>
+                            <p class="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1">{{ rentalStats?.total || 0 }}</p>
+                        </div>
+                        <div class="bg-indigo-100 dark:bg-indigo-900/30 rounded-lg p-2">
+                            <svg class="h-6 w-6 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white dark:bg-gray-900 rounded-xl shadow-sm ring-1 ring-gray-200 dark:ring-gray-800 p-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">Active</p>
+                            <p class="text-2xl font-bold text-green-600 dark:text-green-400 mt-1">{{ rentalStats?.active || 0 }}</p>
+                        </div>
+                        <div class="bg-green-100 dark:bg-green-900/30 rounded-lg p-2">
+                            <svg class="h-6 w-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white dark:bg-gray-900 rounded-xl shadow-sm ring-1 ring-gray-200 dark:ring-gray-800 p-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">Pending</p>
+                            <p class="text-2xl font-bold text-yellow-600 dark:text-yellow-400 mt-1">{{ rentalStats?.pending || 0 }}</p>
+                        </div>
+                        <div class="bg-yellow-100 dark:bg-yellow-900/30 rounded-lg p-2">
+                            <svg class="h-6 w-6 text-yellow-600 dark:text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white dark:bg-gray-900 rounded-xl shadow-sm ring-1 ring-gray-200 dark:ring-gray-800 p-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">Terminated</p>
+                            <p class="text-2xl font-bold text-red-600 dark:text-red-400 mt-1">{{ rentalStats?.terminated || 0 }}</p>
+                        </div>
+                        <div class="bg-red-100 dark:bg-red-900/30 rounded-lg p-2">
+                            <svg class="h-6 w-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white dark:bg-gray-900 rounded-xl shadow-sm ring-1 ring-gray-200 dark:ring-gray-800 p-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">Expired</p>
+                            <p class="text-2xl font-bold text-gray-600 dark:text-gray-400 mt-1">{{ rentalStats?.expired || 0 }}</p>
+                        </div>
+                        <div class="bg-gray-100 dark:bg-gray-700/30 rounded-lg p-2">
+                            <svg class="h-6 w-6 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Rentals Section -->
+            <div class="bg-white dark:bg-gray-900 rounded-xl shadow-sm ring-1 ring-gray-200 dark:ring-gray-800 overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Recent Rentals</h3>
+                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Showing {{ recentRentals?.length || 0 }} most recent rental records</p>
+                    </div>
+                    <Link v-if="recentRentals && recentRentals.length > 0" href="/admin/rentals" class="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors">
+                        View All Rentals
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                        </svg>
+                    </Link>
+                </div>
+
+                <!-- Desktop Table View -->
+                <div class="hidden lg:block overflow-x-auto">
+                    <table v-if="recentRentals && recentRentals.length > 0" class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                        <thead class="bg-gray-50 dark:bg-gray-800">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Property</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Location</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Monthly Rent</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Period</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Remarks</th>
+                                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+                            <tr v-for="rental in recentRentals" :key="rental.id" class="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="flex flex-col">
+                                        <div class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ rental.property_name }}</div>
+                                        <div class="text-xs text-gray-500 dark:text-gray-400">{{ rental.category }}</div>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm text-gray-900 dark:text-gray-100">{{ rental.location }}</div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ rental.formatted_monthly_rent }}</div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-xs text-gray-900 dark:text-gray-100">
+                                        <div>{{ formatDate(rental.start_date) }}</div>
+                                        <div class="text-gray-500 dark:text-gray-400">to {{ formatDate(rental.end_date) }}</div>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span :class="getStatusColor(rental.status)" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize">
+                                        {{ rental.status }}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span :class="getRemarksColor(rental.remarks)" class="text-xs">
+                                        {{ rental.remarks }}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                    <Link :href="`/admin/rentals/${rental.id}`" class="text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300">
+                                        View
+                                    </Link>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div v-else class="px-6 py-12 text-center">
+                        <svg class="mx-auto h-12 w-12 text-gray-400 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                        </svg>
+                        <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">No rentals</h3>
+                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">This client hasn't rented any properties yet.</p>
+                    </div>
+                </div>
+
+                <!-- Mobile Card View -->
+                <div class="lg:hidden divide-y divide-gray-200 dark:divide-gray-700">
+                    <div v-if="recentRentals && recentRentals.length > 0" v-for="rental in recentRentals" :key="rental.id" class="p-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                        <div class="flex flex-col gap-3">
+                            <!-- Property Info -->
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="flex-1 min-w-0">
+                                    <h4 class="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{{ rental.property_name }}</h4>
+                                    <div class="flex flex-wrap items-center gap-2 mt-1">
+                                        <span class="inline-flex items-center text-xs text-gray-500 dark:text-gray-400">
+                                            <svg class="h-3.5 w-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            </svg>
+                                            {{ rental.location }}
+                                        </span>
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
+                                            {{ rental.category }}
+                                        </span>
+                                    </div>
+                                </div>
+                                <span :class="getStatusColor(rental.status)" class="flex-shrink-0 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium capitalize">
+                                    {{ rental.status }}
+                                </span>
+                            </div>
+
+                            <!-- Rental Details -->
+                            <div class="grid grid-cols-2 gap-3 text-sm">
+                                <div>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 mb-0.5">Monthly Rent</p>
+                                    <p class="font-semibold text-gray-900 dark:text-gray-100">{{ rental.formatted_monthly_rent }}</p>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 mb-0.5">Security Deposit</p>
+                                    <p class="font-medium text-gray-900 dark:text-gray-100">{{ rental.formatted_security_deposit }}</p>
+                                </div>
+                                <div class="col-span-2">
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 mb-0.5">Rental Period</p>
+                                    <p class="text-xs text-gray-900 dark:text-gray-100">
+                                        {{ formatDate(rental.start_date) }} - {{ formatDate(rental.end_date) }}
+                                    </p>
+                                </div>
+                                <div class="col-span-2" v-if="rental.remarks">
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 mb-0.5">Remarks</p>
+                                    <p :class="getRemarksColor(rental.remarks)" class="text-xs">
+                                        {{ rental.remarks }}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <!-- Action Button -->
+                            <Link :href="`/admin/rentals/${rental.id}`" class="inline-flex items-center justify-center gap-2 px-3 py-2 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 text-xs font-medium rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/30 transition-colors">
+                                View Details
+                                <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                                </svg>
+                            </Link>
+                        </div>
+                    </div>
+                    <div v-else class="px-6 py-12 text-center">
+                        <svg class="mx-auto h-12 w-12 text-gray-400 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                        </svg>
+                        <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">No rentals</h3>
+                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">This client hasn't rented any properties yet.</p>
+                    </div>
+                </div>
+            </div>
         </div>
         <!-- Verify Email Confirmation Modal -->
         <VerifyModal
@@ -209,6 +427,8 @@ import { ref } from 'vue'
 const props = defineProps({
     client: Object,
     tokensCount: Number,
+    recentRentals: Array,
+    rentalStats: Object,
     can: Object,
 })
 
@@ -227,6 +447,34 @@ const formatDateTime = (dateString) => {
         hour: '2-digit',
         minute: '2-digit'
     })
+}
+
+const formatDate = (dateString) => {
+    if (!dateString) return 'N/A'
+    return new Date(dateString).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+    })
+}
+
+const getStatusColor = (status) => {
+    const colors = {
+        'active': 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
+        'pending': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300',
+        'terminated': 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
+        'expired': 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-300',
+        'ended': 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-300',
+    }
+    return colors[status] || 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-300'
+}
+
+const getRemarksColor = (remarks) => {
+    if (!remarks) return 'text-gray-600 dark:text-gray-400'
+    if (remarks.includes('Over Due')) return 'text-red-600 dark:text-red-400 font-semibold'
+    if (remarks.includes('Due Date Today')) return 'text-orange-600 dark:text-orange-400 font-semibold'
+    if (remarks.includes('Almost Due Date')) return 'text-yellow-600 dark:text-yellow-400 font-semibold'
+    return 'text-green-600 dark:text-green-400'
 }
 
 // Verify Email modal state and handlers

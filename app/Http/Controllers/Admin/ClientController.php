@@ -139,9 +139,47 @@ class ClientController extends Controller
         // Get client's API tokens count
         $tokensCount = $client->tokens()->count();
 
+        // Get recent rentals with property details
+        $recentRentals = $client->rentals()
+            ->with(['property.category', 'property.location'])
+            ->orderBy('created_at', 'desc')
+            ->limit(10)
+            ->get()
+            ->map(function ($rental) {
+                return [
+                    'id' => $rental->id,
+                    'property_id' => $rental->property_id,
+                    'property_name' => $rental->property->property_name ?? 'N/A',
+                    'category' => $rental->property->category->name ?? 'N/A',
+                    'location' => $rental->property->location->name ?? 'N/A',
+                    'monthly_rent' => $rental->monthly_rent,
+                    'formatted_monthly_rent' => $rental->formatted_monthly_rent,
+                    'security_deposit' => $rental->security_deposit,
+                    'formatted_security_deposit' => $rental->formatted_security_deposit,
+                    'start_date' => $rental->start_date?->format('Y-m-d'),
+                    'end_date' => $rental->end_date?->format('Y-m-d'),
+                    'status' => $rental->status,
+                    'remarks' => $rental->remarks,
+                    'remaining_days' => $rental->remaining_days,
+                    'created_at' => $rental->created_at->format('Y-m-d H:i:s'),
+                    'updated_at' => $rental->updated_at->format('Y-m-d H:i:s'),
+                ];
+            });
+
+        // Get rental statistics
+        $rentalStats = [
+            'total' => $client->rentals()->count(),
+            'active' => $client->rentals()->where('status', 'active')->count(),
+            'pending' => $client->rentals()->where('status', 'pending')->count(),
+            'terminated' => $client->rentals()->where('status', 'terminated')->count(),
+            'expired' => $client->rentals()->where('status', 'expired')->count(),
+        ];
+
         return Inertia::render('Admin/Clients/Show', [
             'client' => $client,
             'tokensCount' => $tokensCount,
+            'recentRentals' => $recentRentals,
+            'rentalStats' => $rentalStats,
             'can' => [
                 'edit_clients' => auth()->user()->hasAnyRole(['System Admin', 'Admin']),
                 'delete_clients' => auth()->user()->hasRole('System Admin'),
