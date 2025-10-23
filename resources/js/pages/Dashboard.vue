@@ -8,7 +8,6 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import Icon from '@/components/Icon.vue';
-import AnalyticsModal from '@/components/AnalyticsModal.vue';
 import { computed, ref, onMounted } from 'vue';
 import { formatCurrency, formatNumber, formatRelativeTime } from '@/utils/formatters';
 
@@ -53,7 +52,6 @@ const isAdmin = computed(() =>
 // Loading states
 const loading = ref(false);
 const error = ref<string | null>(null);
-const showAnalyticsModal = ref(false);
 
 // Chart data processing
 const chartData = computed(() => {
@@ -706,10 +704,6 @@ onMounted(() => {
                         <Icon name="barChart3" class="h-5 w-5" />
                         Analytics & Performance
                     </h2>
-                    <Button variant="outline" size="sm" @click="showAnalyticsModal = true">
-                        <Icon name="barChart3" class="h-4 w-4 mr-2" />
-                        View Analytics
-                    </Button>
                 </div>
 
                 <!-- Admin Stats Grid -->
@@ -1237,19 +1231,6 @@ onMounted(() => {
                 </Card>
             </div>
         </div>
-
-        <!-- Analytics Modal -->
-        <AnalyticsModal
-            :is-open="showAnalyticsModal"
-            :property-performance="propertyPerformance"
-            :location-stats="locationStats"
-            :category-stats="categoryStats"
-            :rented-stats="rentedStats"
-            :client-stats="clientStats"
-            :admin-stats="adminStats"
-            :system-stats="systemStats"
-            @close="showAnalyticsModal = false"
-        />
     </AppLayout>
 </template>
 
