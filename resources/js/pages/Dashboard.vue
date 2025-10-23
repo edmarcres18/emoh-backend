@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import Icon from '@/components/Icon.vue';
 import AnalyticsModal from '@/components/AnalyticsModal.vue';
-import { computed, ref, onMounted, onBeforeUnmount } from 'vue';
+import { computed, ref, onMounted } from 'vue';
 import { formatCurrency, formatNumber, formatRelativeTime } from '@/utils/formatters';
 
 // Props from the controller
@@ -54,8 +54,6 @@ const isAdmin = computed(() =>
 const loading = ref(false);
 const error = ref<string | null>(null);
 const showAnalyticsModal = ref(false);
-const autoRefresh = ref(true);
-let refreshInterval: NodeJS.Timeout | null = null;
 
 // Chart data processing
 const chartData = computed(() => {
@@ -69,19 +67,20 @@ const chartData = computed(() => {
 
 // Enhanced stats processing with better categorization
 const propertyStats = computed(() => {
-    const propertyGrowth = props.stats?.property_growth || 0;
-    const featuredGrowth = props.stats?.featured_growth || 0;
-    const availableCount = (props.stats?.total_properties || 0) - (props.rentedStats?.active_rentals || 0);
+    const totalGrowth = props.stats?.property_growth ?? 0;
+    const featuredGrowth = props.stats?.featured_growth ?? 0;
+    const availableProps = props.stats?.available_properties ?? 0;
+    const totalProps = props.stats?.total_properties ?? 0;
     
     return [
         {
             title: 'Total Properties',
-            value: formatNumber(props.stats?.total_properties || 0),
+            value: formatNumber(totalProps),
             icon: 'home',
             description: 'Active listings',
             color: 'bg-blue-500',
-            trend: `${propertyGrowth > 0 ? '+' : ''}${propertyGrowth}%`,
-            trendUp: propertyGrowth > 0 ? true : propertyGrowth < 0 ? false : null
+            trend: totalGrowth !== 0 ? `${totalGrowth > 0 ? '+' : ''}${totalGrowth}%` : 'No change',
+            trendUp: totalGrowth > 0 ? true : totalGrowth < 0 ? false : null
         },
         {
             title: 'Featured Properties',
@@ -89,17 +88,17 @@ const propertyStats = computed(() => {
             icon: 'star',
             description: 'Premium listings',
             color: 'bg-yellow-500',
-            trend: `${featuredGrowth > 0 ? '+' : ''}${featuredGrowth}%`,
+            trend: featuredGrowth !== 0 ? `${featuredGrowth > 0 ? '+' : ''}${featuredGrowth}%` : 'No change',
             trendUp: featuredGrowth > 0 ? true : featuredGrowth < 0 ? false : null
         },
         {
             title: 'Available Properties',
-            value: formatNumber(availableCount),
+            value: formatNumber(availableProps),
             icon: 'home',
             description: 'Ready to rent',
             color: 'bg-green-500',
-            trend: `${availableCount} available`,
-            trendUp: availableCount > 0
+            trend: `${Math.round((availableProps / (totalProps || 1)) * 100)}% of total`,
+            trendUp: availableProps > 0 ? true : null
         },
         {
             title: 'Categories',
@@ -118,9 +117,9 @@ const locationStats = computed(() => props.locationStats || []);
 const adminStats = computed(() => {
     if (!isAdmin.value || !props.adminStats) return [];
 
-    const revenueGrowth = props.adminStats.revenue_growth || 0;
-    const monthlyGrowth = props.adminStats.monthly_growth || 0;
-    const occupancyRate = props.adminStats.occupancy_rate || 0;
+    const revenueGrowth = props.adminStats.revenue_growth ?? 0;
+    const monthlyGrowth = props.adminStats.monthly_growth ?? 0;
+    const occupancyRate = props.adminStats.occupancy_rate ?? 0;
 
     return [
         {
@@ -129,7 +128,7 @@ const adminStats = computed(() => {
             icon: 'dollarSign',
             description: 'Monthly potential',
             color: 'bg-emerald-500',
-            trend: `${revenueGrowth > 0 ? '+' : ''}${revenueGrowth}%`,
+            trend: revenueGrowth !== 0 ? `${revenueGrowth > 0 ? '+' : ''}${revenueGrowth}%` : 'No change',
             trendUp: revenueGrowth > 0 ? true : revenueGrowth < 0 ? false : null
         },
         {
@@ -138,14 +137,14 @@ const adminStats = computed(() => {
             icon: 'trendingUp',
             description: 'Per property',
             color: 'bg-orange-500',
-            trend: `${props.adminStats.properties_this_month || 0} this month`,
-            trendUp: (props.adminStats.properties_this_month || 0) > 0
+            trend: `${props.adminStats.total_categories || 0} categories`,
+            trendUp: null
         },
         {
             title: 'Monthly Growth',
-            value: `${monthlyGrowth > 0 ? '+' : ''}${monthlyGrowth}%`,
+            value: `${monthlyGrowth}%`,
             icon: 'barChart3',
-            description: 'This month',
+            description: 'Property growth',
             color: monthlyGrowth >= 0 ? 'bg-green-500' : 'bg-red-500',
             trend: monthlyGrowth >= 0 ? 'Growing' : 'Declining',
             trendUp: monthlyGrowth >= 0
@@ -154,9 +153,9 @@ const adminStats = computed(() => {
             title: 'Occupancy Rate',
             value: `${occupancyRate}%`,
             icon: 'users',
-            description: 'Current rate',
-            color: 'bg-indigo-500',
-            trend: occupancyRate > 80 ? 'Excellent' : occupancyRate > 60 ? 'Good' : 'Needs attention',
+            description: 'Properties rented',
+            color: occupancyRate > 80 ? 'bg-green-500' : occupancyRate > 60 ? 'bg-blue-500' : 'bg-orange-500',
+            trend: occupancyRate > 80 ? 'Excellent' : occupancyRate > 60 ? 'Good' : occupancyRate > 40 ? 'Fair' : 'Low',
             trendUp: occupancyRate > 60
         }
     ];
@@ -165,27 +164,30 @@ const adminStats = computed(() => {
 const systemStats = computed(() => {
     if (!isSystemAdmin.value || !props.systemStats) return [];
 
+    const totalUsers = props.systemStats.total_users || 0;
+    const activeUsers = props.systemStats.active_users || 0;
     const usersThisMonth = props.systemStats.users_this_month || 0;
     const clientsThisMonth = props.systemStats.clients_this_month || 0;
+    const activeRate = totalUsers > 0 ? Math.round((activeUsers / totalUsers) * 100) : 0;
 
     return [
         {
             title: 'Total Users',
-            value: formatNumber(props.systemStats.total_users || 0),
+            value: formatNumber(totalUsers),
             icon: 'users',
             description: 'Registered users',
             color: 'bg-cyan-500',
-            trend: `${usersThisMonth} this month`,
-            trendUp: usersThisMonth > 0
+            trend: `+${usersThisMonth} this month`,
+            trendUp: usersThisMonth > 0 ? true : null
         },
         {
             title: 'Active Users',
-            value: formatNumber(props.systemStats.active_users || 0),
+            value: formatNumber(activeUsers),
             icon: 'userCheck',
             description: 'Verified accounts',
             color: 'bg-teal-500',
-            trend: `${props.systemStats.admins || 0} admins`,
-            trendUp: true
+            trend: `${activeRate}% verified`,
+            trendUp: activeRate > 80 ? true : activeRate > 50 ? null : false
         },
         {
             title: 'Total Clients',
@@ -193,8 +195,8 @@ const systemStats = computed(() => {
             icon: 'users',
             description: 'Client accounts',
             color: 'bg-blue-500',
-            trend: `${clientsThisMonth} this month`,
-            trendUp: clientsThisMonth > 0
+            trend: `+${clientsThisMonth} this month`,
+            trendUp: clientsThisMonth > 0 ? true : null
         },
         {
             title: 'Database Size',
@@ -216,6 +218,7 @@ const rentalStats = computed(() => {
     const totalRentals = props.rentedStats.total_rentals || 0;
     const expiringSoon = props.rentedStats.expiring_soon || 0;
     const occupancyRate = props.rentedStats.occupancy_rate || 0;
+    const pendingRentals = props.rentedStats.pending_rentals || 0;
 
     return [
         {
@@ -225,7 +228,7 @@ const rentalStats = computed(() => {
             description: 'Currently occupied',
             color: 'bg-green-500',
             trend: `${totalRentals} total`,
-            trendUp: activeRentals > 0
+            trendUp: activeRentals > 0 ? true : null
         },
         {
             title: 'Monthly Revenue',
@@ -233,7 +236,7 @@ const rentalStats = computed(() => {
             icon: 'dollarSign',
             description: 'From active rentals',
             color: 'bg-emerald-500',
-            trend: `${activeRentals} active`,
+            trend: `${activeRentals} sources`,
             trendUp: true
         },
         {
@@ -241,18 +244,18 @@ const rentalStats = computed(() => {
             value: formatNumber(expiringSoon),
             icon: 'clock',
             description: 'Next 30 days',
-            color: expiringSoon > 0 ? 'bg-orange-500' : 'bg-green-500',
+            color: expiringSoon > 5 ? 'bg-red-500' : expiringSoon > 0 ? 'bg-orange-500' : 'bg-green-500',
             trend: expiringSoon > 0 ? 'Action needed' : 'All good',
             trendUp: expiringSoon === 0
         },
         {
-            title: 'Occupancy Rate',
-            value: `${occupancyRate}%`,
-            icon: 'percent',
-            description: 'Properties occupied',
-            color: 'bg-blue-500',
-            trend: occupancyRate > 80 ? 'Excellent' : occupancyRate > 60 ? 'Good' : 'Needs attention',
-            trendUp: occupancyRate > 60
+            title: 'Pending Approvals',
+            value: formatNumber(pendingRentals),
+            icon: 'clock',
+            description: 'Awaiting approval',
+            color: 'bg-yellow-500',
+            trend: pendingRentals > 0 ? 'Review needed' : 'All clear',
+            trendUp: pendingRentals === 0
         }
     ];
 });
@@ -265,6 +268,7 @@ const clientStats = computed(() => {
     const verifiedClients = props.clientStats.verified_clients || 0;
     const activeRenters = props.clientStats.active_renters || 0;
     const newThisMonth = props.clientStats.new_this_month || 0;
+    const verificationRate = totalClients > 0 ? Math.round((verifiedClients / totalClients) * 100) : 0;
 
     return [
         {
@@ -273,8 +277,8 @@ const clientStats = computed(() => {
             icon: 'users',
             description: 'Registered clients',
             color: 'bg-blue-500',
-            trend: `${newThisMonth} this month`,
-            trendUp: newThisMonth > 0
+            trend: `+${newThisMonth} this month`,
+            trendUp: newThisMonth > 0 ? true : null
         },
         {
             title: 'Verified Clients',
@@ -282,8 +286,8 @@ const clientStats = computed(() => {
             icon: 'userCheck',
             description: 'Email verified',
             color: 'bg-green-500',
-            trend: `${totalClients > 0 ? Math.round((verifiedClients / totalClients) * 100) : 0}% verified`,
-            trendUp: verifiedClients > 0
+            trend: `${verificationRate}% verified`,
+            trendUp: verificationRate > 80 ? true : verificationRate > 50 ? null : false
         },
         {
             title: 'Active Renters',
@@ -291,8 +295,8 @@ const clientStats = computed(() => {
             icon: 'home',
             description: 'Currently renting',
             color: 'bg-purple-500',
-            trend: `${totalClients > 0 ? Math.round((activeRenters / totalClients) * 100) : 0}% renting`,
-            trendUp: activeRenters > 0
+            trend: totalClients > 0 ? `${Math.round((activeRenters / totalClients) * 100)}% of clients` : 'No clients',
+            trendUp: activeRenters > 0 ? true : null
         },
         {
             title: 'New This Month',
@@ -300,8 +304,8 @@ const clientStats = computed(() => {
             icon: 'userPlus',
             description: 'Recent signups',
             color: 'bg-orange-500',
-            trend: newThisMonth > 1 ? 'Growing' : newThisMonth === 1 ? 'Steady' : 'None',
-            trendUp: newThisMonth > 0
+            trend: newThisMonth > 0 ? 'Growing' : 'No growth',
+            trendUp: newThisMonth > 0 ? true : null
         }
     ];
 });
@@ -339,7 +343,6 @@ const getRentalStatusColor = (status: string) => {
 // Utility functions
 const refreshData = async () => {
     loading.value = true;
-    error.value = null;
     try {
         const response = await fetch('/dashboard/refresh', {
             method: 'POST',
@@ -359,40 +362,10 @@ const refreshData = async () => {
         Object.assign(props, data);
 
     } catch (err) {
-        error.value = 'Failed to refresh data. Please try again.';
+        error.value = 'Failed to refresh data';
         console.error('Refresh error:', err);
     } finally {
         loading.value = false;
-    }
-};
-
-// Auto-refresh functionality
-const startAutoRefresh = () => {
-    if (refreshInterval) {
-        clearInterval(refreshInterval);
-    }
-    
-    // Refresh every 5 minutes (300000 ms)
-    refreshInterval = setInterval(() => {
-        if (autoRefresh.value && !loading.value) {
-            refreshData();
-        }
-    }, 300000);
-};
-
-const stopAutoRefresh = () => {
-    if (refreshInterval) {
-        clearInterval(refreshInterval);
-        refreshInterval = null;
-    }
-};
-
-const toggleAutoRefresh = () => {
-    autoRefresh.value = !autoRefresh.value;
-    if (autoRefresh.value) {
-        startAutoRefresh();
-    } else {
-        stopAutoRefresh();
     }
 };
 
@@ -411,14 +384,7 @@ const getActiveClientProgress = () => {
 };
 
 onMounted(() => {
-    // Start auto-refresh on mount
-    if (autoRefresh.value) {
-        startAutoRefresh();
-    }
-});
-
-onBeforeUnmount(() => {
-    stopAutoRefresh();
+    // Any initialization logic
 });
 </script>
 
@@ -429,23 +395,17 @@ onBeforeUnmount(() => {
         <div class="flex h-full flex-1 flex-col gap-6 overflow-x-auto p-4 sm:p-6">
             <!-- Welcome Section -->
             <div class="flex flex-col gap-4">
-                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div class="flex items-center justify-between">
                     <div>
-                        <h1 class="text-2xl sm:text-3xl font-bold tracking-tight">Welcome back, {{ user.name }}!</h1>
-                        <p class="text-muted-foreground mt-1 text-sm sm:text-base">
+                        <h1 class="text-3xl font-bold tracking-tight">Welcome back, {{ user.name }}!</h1>
+                        <p class="text-muted-foreground mt-1">
                             Here's your comprehensive real estate management overview
                         </p>
                     </div>
-                    <div class="flex items-center gap-2 w-full sm:w-auto">
-                        <Button variant="outline" size="sm" @click="toggleAutoRefresh" class="flex-1 sm:flex-none">
-                            <Icon :name="autoRefresh ? 'pause' : 'play'" class="h-4 w-4 mr-2" />
-                            <span class="hidden sm:inline">Auto-refresh {{ autoRefresh ? 'ON' : 'OFF' }}</span>
-                            <span class="sm:hidden">Auto</span>
-                        </Button>
-                        <Button variant="outline" size="sm" @click="refreshData" :disabled="loading" class="flex-1 sm:flex-none">
+                    <div class="flex items-center gap-2">
+                        <Button variant="outline" size="sm" @click="refreshData" :disabled="loading">
                             <Icon name="refreshCw" :class="loading ? 'h-4 w-4 mr-2 animate-spin' : 'h-4 w-4 mr-2'" />
-                            <span class="hidden sm:inline">Refresh</span>
-                            <span class="sm:hidden">Sync</span>
+                            Refresh
                         </Button>
                     </div>
                 </div>
@@ -462,32 +422,13 @@ onBeforeUnmount(() => {
                 </div>
             </div>
 
-            <!-- Status Indicators -->
-            <div v-if="loading && !error" class="rounded-lg border border-blue-200 bg-blue-50 p-3 sm:p-4 dark:border-blue-800 dark:bg-blue-900/20">
-                <div class="flex items-center">
-                    <Icon name="refreshCw" class="h-5 w-5 text-blue-500 animate-spin" />
+            <!-- Error Alert -->
+            <div v-if="error" class="rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-800 dark:bg-red-900/20">
+                <div class="flex">
+                    <Icon name="alertCircle" class="h-5 w-5 text-red-400" />
                     <div class="ml-3">
-                        <p class="text-sm text-blue-800 dark:text-blue-200">Updating dashboard data...</p>
-                    </div>
-                </div>
-            </div>
-
-            <div v-if="error" class="rounded-lg border border-red-200 bg-red-50 p-3 sm:p-4 dark:border-red-800 dark:bg-red-900/20">
-                <div class="flex items-start">
-                    <Icon name="alertCircle" class="h-5 w-5 text-red-400 flex-shrink-0" />
-                    <div class="ml-3 flex-1">
                         <p class="text-sm text-red-800 dark:text-red-200">{{ error }}</p>
-                        <Button variant="link" size="sm" @click="refreshData" class="mt-1 p-0 h-auto text-red-700">
-                            Try again
-                        </Button>
                     </div>
-                </div>
-            </div>
-
-            <div v-if="autoRefresh" class="rounded-lg border border-green-200 bg-green-50 p-2 dark:border-green-800 dark:bg-green-900/20">
-                <div class="flex items-center justify-center">
-                    <Icon name="checkCircle" class="h-4 w-4 text-green-600 mr-2" />
-                    <p class="text-xs text-green-800 dark:text-green-200">Auto-refresh enabled - Updates every 5 minutes</p>
                 </div>
             </div>
 
@@ -503,8 +444,8 @@ onBeforeUnmount(() => {
                     </Link>
                 </div>
 
-                <div class="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-                    <Card v-for="stat in propertyStats" :key="stat.title" class="relative overflow-hidden hover:shadow-md transition-shadow cursor-pointer">
+                <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                    <Card v-for="stat in propertyStats" :key="stat.title" class="relative overflow-hidden hover:shadow-md transition-shadow">
                         <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle class="text-sm font-medium">{{ stat.title }}</CardTitle>
                             <div :class="[stat.color, 'rounded-full p-2 text-white']">
@@ -529,26 +470,43 @@ onBeforeUnmount(() => {
             </div>
 
             <!-- Location Overview -->
-            <div class="space-y-4">
-                <h2 class="text-lg font-semibold tracking-tight flex items-center gap-2">
-                    <Icon name="mapPin" class="h-4 w-4" />
-                    Coverage Areas
-                </h2>
+            <div v-if="locationStats && locationStats.length > 0" class="space-y-4">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-lg font-semibold tracking-tight flex items-center gap-2">
+                        <Icon name="mapPin" class="h-4 w-4" />
+                        Top Locations
+                    </h2>
+                    <Link href="/locations" class="text-sm text-primary hover:underline">
+                        View all locations →
+                    </Link>
+                </div>
 
-                <div class="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-                    <Card v-for="stat in locationStats" :key="stat.title" class="relative overflow-hidden hover:shadow-md transition-shadow cursor-pointer">
+                <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    <Card v-for="(location, index) in locationStats.slice(0, 6)" :key="location.name" class="relative overflow-hidden hover:shadow-md transition-shadow">
                         <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle class="text-sm font-medium">{{ stat.title }}</CardTitle>
-                            <div :class="[stat.color, 'rounded-full p-2 text-white']">
-                                <Icon :name="stat.icon" class="h-4 w-4" />
+                            <CardTitle class="text-sm font-medium truncate">{{ location.name }}</CardTitle>
+                            <div class="rounded-full p-2 text-white bg-blue-500">
+                                <Icon name="mapPin" class="h-4 w-4" />
                             </div>
                         </CardHeader>
                         <CardContent>
-                            <div class="text-2xl font-bold">{{ stat.value }}</div>
-                            <p class="text-xs text-muted-foreground">{{ stat.description }}</p>
-                            <div class="flex items-center gap-1 mt-2">
-                                <Icon name="trendingUp" class="h-3 w-3 text-green-500" />
-                                <span class="text-xs font-medium text-green-600">{{ stat.trend }}</span>
+                            <div class="space-y-2">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-xs text-muted-foreground">Code</span>
+                                    <Badge variant="outline" class="text-xs">{{ location.code }}</Badge>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <span class="text-xs text-muted-foreground">Properties</span>
+                                    <span class="text-sm font-semibold">{{ formatNumber(location.properties_count) }}</span>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <span class="text-xs text-muted-foreground">Avg Price</span>
+                                    <span class="text-sm font-semibold text-green-600">{{ formatCurrency(location.avg_price) }}</span>
+                                </div>
+                                <div class="flex items-center justify-between pt-1 border-t">
+                                    <span class="text-xs text-muted-foreground">Total Revenue</span>
+                                    <span class="text-sm font-bold text-emerald-600">{{ formatCurrency(location.total_revenue) }}</span>
+                                </div>
                             </div>
                         </CardContent>
                     </Card>
@@ -568,7 +526,7 @@ onBeforeUnmount(() => {
                 </div>
 
                 <!-- Rental Statistics -->
-                <div v-if="rentedStats" class="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+                <div v-if="rentedStats" class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                     <Card v-for="stat in rentalStats" :key="stat.title" class="relative overflow-hidden hover:shadow-md transition-shadow">
                         <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle class="text-sm font-medium">{{ stat.title }}</CardTitle>
@@ -703,7 +661,7 @@ onBeforeUnmount(() => {
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div class="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                        <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                             <div v-for="client in recentClients.slice(0, 6)" :key="client.id"
                                  class="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors">
                                 <div class="relative">
@@ -755,7 +713,7 @@ onBeforeUnmount(() => {
                 </div>
 
                 <!-- Admin Stats Grid -->
-                <div class="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+                <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                     <Card v-for="stat in adminStats" :key="stat.title" class="relative overflow-hidden hover:shadow-md transition-shadow">
                         <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle class="text-sm font-medium">{{ stat.title }}</CardTitle>
@@ -782,7 +740,7 @@ onBeforeUnmount(() => {
                 <!-- Analytics Charts Grid -->
                 <div class="grid gap-6 lg:grid-cols-2">
                     <!-- Property Performance Chart -->
-                    <Card v-if="propertyPerformance">
+                    <Card v-if="propertyPerformance && propertyPerformance.length > 0">
                         <CardHeader>
                             <CardTitle class="flex items-center gap-2">
                                 <Icon name="trendingUp" class="h-5 w-5" />
@@ -790,7 +748,7 @@ onBeforeUnmount(() => {
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div class="space-y-4">
+                            <div v-if="chartData.length > 0" class="space-y-4">
                                 <div v-for="item in chartData" :key="item.month"
                                      class="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors">
                                     <div class="flex items-center gap-3">
@@ -798,16 +756,22 @@ onBeforeUnmount(() => {
                                         <span class="text-sm font-medium">{{ item.month }} {{ item.year }}</span>
                                     </div>
                                     <div class="flex items-center gap-4 text-sm">
-                                        <span class="text-muted-foreground">{{ item.properties }} properties</span>
+                                        <span class="text-muted-foreground">{{ formatNumber(item.properties) }} properties</span>
                                         <span class="font-medium text-green-600">{{ formatCurrency(item.revenue) }}</span>
                                     </div>
                                 </div>
+                            </div>
+
+                            <div v-else class="text-center py-12">
+                                <Icon name="trendingUp" class="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+                                <p class="text-muted-foreground text-lg">No performance data available</p>
+                                <p class="text-sm text-muted-foreground mt-1">Data will appear as properties are added</p>
                             </div>
                         </CardContent>
                     </Card>
 
                     <!-- Location Stats -->
-                    <Card v-if="locationStats">
+                    <Card v-if="locationStats && locationStats.length > 0">
                         <CardHeader>
                             <CardTitle class="flex items-center gap-2">
                                 <Icon name="mapPin" class="h-5 w-5" />
@@ -816,7 +780,7 @@ onBeforeUnmount(() => {
                         </CardHeader>
                         <CardContent>
                             <div class="space-y-3">
-                                <div v-for="(location, index) in (locationStats || []).slice(0, 5)" :key="location.name"
+                                <div v-for="(location, index) in locationStats.slice(0, 5)" :key="location.name"
                                      class="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors">
                                     <div class="flex items-center gap-3">
                                         <div class="w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold">
@@ -828,17 +792,23 @@ onBeforeUnmount(() => {
                                         </div>
                                     </div>
                                     <div class="text-right">
-                                        <p class="font-medium">{{ location.properties_count }} properties</p>
+                                        <p class="font-medium">{{ formatNumber(location.properties_count) }} properties</p>
                                         <p class="text-sm text-muted-foreground">{{ formatCurrency(location.avg_price) }} avg</p>
                                     </div>
                                 </div>
+                            </div>
+
+                            <div v-if="locationStats.length === 0" class="text-center py-12">
+                                <Icon name="mapPin" class="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+                                <p class="text-muted-foreground text-lg">No location data available</p>
+                                <p class="text-sm text-muted-foreground mt-1">Add properties to see location statistics</p>
                             </div>
                         </CardContent>
                     </Card>
                 </div>
 
                 <!-- Category Stats -->
-                <Card v-if="categoryStats">
+                <Card v-if="categoryStats && categoryStats.length > 0">
                     <CardHeader>
                         <CardTitle class="flex items-center gap-2">
                             <Icon name="tag" class="h-5 w-5" />
@@ -846,18 +816,18 @@ onBeforeUnmount(() => {
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div class="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                        <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                             <div v-for="category in categoryStats" :key="category.name"
                                  class="rounded-lg border p-4 hover:shadow-md transition-shadow">
                                 <div class="flex items-center gap-2 mb-2">
                                     <div class="w-2 h-2 rounded-full bg-blue-500"></div>
                                     <h4 class="font-medium">{{ category.name }}</h4>
                                 </div>
-                                <p class="text-sm text-muted-foreground mb-3">{{ category.description }}</p>
+                                <p class="text-sm text-muted-foreground mb-3 line-clamp-2">{{ category.description || 'No description available' }}</p>
                                 <div class="space-y-2">
                                     <div class="flex justify-between text-sm">
                                         <span class="text-muted-foreground">Properties</span>
-                                        <span class="font-medium">{{ category.properties_count }}</span>
+                                        <span class="font-medium">{{ formatNumber(category.properties_count) }}</span>
                                     </div>
                                     <div class="flex justify-between text-sm">
                                         <span class="text-muted-foreground">Total Revenue</span>
@@ -869,6 +839,12 @@ onBeforeUnmount(() => {
                                     </div>
                                 </div>
                             </div>
+                        </div>
+
+                        <div v-if="categoryStats.length === 0" class="text-center py-12">
+                            <Icon name="tag" class="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+                            <p class="text-muted-foreground text-lg">No categories found</p>
+                            <p class="text-sm text-muted-foreground mt-1">Create categories to organize your properties</p>
                         </div>
                     </CardContent>
                 </Card>
@@ -887,7 +863,7 @@ onBeforeUnmount(() => {
                 </div>
 
                 <!-- System Stats -->
-                <div v-if="systemStats" class="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+                <div v-if="systemStats" class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                     <Card v-for="stat in systemStats" :key="stat.title" class="relative overflow-hidden hover:shadow-md transition-shadow">
                         <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle class="text-sm font-medium">{{ stat.title }}</CardTitle>
@@ -914,7 +890,7 @@ onBeforeUnmount(() => {
                 <!-- System Monitoring Grid -->
                 <div class="grid gap-6 lg:grid-cols-2">
                     <!-- System Logs -->
-                    <Card v-if="systemLogs">
+                    <Card v-if="systemLogs && systemLogs.length > 0">
                         <CardHeader class="flex flex-row items-center justify-between">
                             <CardTitle class="flex items-center gap-2">
                                 <Icon name="fileText" class="h-5 w-5" />
@@ -927,11 +903,11 @@ onBeforeUnmount(() => {
                         </CardHeader>
                         <CardContent>
                             <div class="space-y-3">
-                                <div v-for="log in systemLogs.slice(0, 8)" :key="log.message"
+                                <div v-for="(log, index) in systemLogs.slice(0, 8)" :key="`${log.message}-${index}`"
                                      class="flex items-start gap-3 rounded-lg p-3 border"
                                      :class="getLogLevelColor(log.level)">
                                     <Badge :variant="log.level === 'error' ? 'destructive' : log.level === 'warning' ? 'secondary' : 'default'"
-                                           class="text-xs">
+                                           class="text-xs shrink-0">
                                         {{ log.level.toUpperCase() }}
                                     </Badge>
                                     <div class="flex-1 min-w-0">
@@ -939,6 +915,12 @@ onBeforeUnmount(() => {
                                         <p class="text-xs text-muted-foreground">{{ formatRelativeTime(log.timestamp) }}</p>
                                     </div>
                                 </div>
+                            </div>
+
+                            <div v-if="systemLogs.length === 0" class="text-center py-12">
+                                <Icon name="fileText" class="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+                                <p class="text-muted-foreground text-lg">No system logs available</p>
+                                <p class="text-sm text-muted-foreground mt-1">Logs will appear here as system events occur</p>
                             </div>
                         </CardContent>
                     </Card>
@@ -956,29 +938,34 @@ onBeforeUnmount(() => {
                                 <div class="grid grid-cols-2 gap-4">
                                     <div class="text-center p-3 rounded-lg bg-muted/50">
                                         <p class="text-sm font-medium text-muted-foreground">Last Backup</p>
-                                        <p class="text-lg font-bold">{{ formatRelativeTime(backupStatus.last_backup) }}</p>
+                                        <p class="text-lg font-bold">{{ backupStatus.last_backup ? formatRelativeTime(backupStatus.last_backup) : 'Never' }}</p>
                                     </div>
                                     <div class="text-center p-3 rounded-lg bg-muted/50">
                                         <p class="text-sm font-medium text-muted-foreground">Backup Size</p>
-                                        <p class="text-lg font-bold">{{ backupStatus.backup_size }}</p>
+                                        <p class="text-lg font-bold">{{ backupStatus.backup_size || '0 MB' }}</p>
                                     </div>
                                 </div>
 
                                 <div class="flex items-center justify-between p-3 rounded-lg border">
                                     <span class="text-sm font-medium">Status</span>
-                                    <Badge :variant="backupStatus.status === 'success' ? 'default' : 'destructive'">
-                                        {{ backupStatus.status.toUpperCase() }}
+                                    <Badge :variant="backupStatus.status === 'success' ? 'default' : backupStatus.status === 'no_backups' ? 'secondary' : 'destructive'">
+                                        {{ (backupStatus.status || 'unknown').toUpperCase().replace('_', ' ') }}
                                     </Badge>
                                 </div>
 
                                 <div class="flex items-center justify-between p-3 rounded-lg border">
                                     <span class="text-sm font-medium">Next Scheduled</span>
-                                    <span class="text-sm text-muted-foreground">{{ formatRelativeTime(backupStatus.next_scheduled) }}</span>
+                                    <span class="text-sm text-muted-foreground">{{ backupStatus.next_scheduled ? formatRelativeTime(backupStatus.next_scheduled) : 'Not scheduled' }}</span>
                                 </div>
 
                                 <div class="flex items-center justify-between p-3 rounded-lg border">
                                     <span class="text-sm font-medium">Retention</span>
-                                    <span class="text-sm text-muted-foreground">{{ backupStatus.retention_days }} days</span>
+                                    <span class="text-sm text-muted-foreground">{{ backupStatus.retention_days || 30 }} days</span>
+                                </div>
+
+                                <div v-if="backupStatus.backup_count" class="flex items-center justify-between p-3 rounded-lg border">
+                                    <span class="text-sm font-medium">Total Backups</span>
+                                    <span class="text-sm text-muted-foreground">{{ backupStatus.backup_count }} files</span>
                                 </div>
                             </div>
                         </CardContent>
@@ -1029,7 +1016,7 @@ onBeforeUnmount(() => {
                     Quick Actions
                 </h2>
 
-                <div class="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                     <Link v-for="action in quickActions" :key="action.title" :href="action.href"
                           class="group relative overflow-hidden rounded-lg border p-4 hover:shadow-md transition-all hover:border-primary/20">
                         <div class="flex items-center gap-3">

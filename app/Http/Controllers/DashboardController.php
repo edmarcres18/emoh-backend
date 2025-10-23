@@ -147,21 +147,19 @@ class DashboardController extends Controller
             $featuredProperties = Property::where('is_featured', true)->count();
             $availableProperties = Property::where('status', 'Available')->count();
             $rentedProperties = Property::where('status', 'Rented')->count();
-            $totalCategories = Category::count();
-            $totalLocations = Locations::count();
-
-            // Calculate trends
             $propertiesThisMonth = Property::whereMonth('created_at', Carbon::now()->month)
                 ->whereYear('created_at', Carbon::now()->year)
                 ->count();
             $propertiesLastMonth = Property::whereMonth('created_at', Carbon::now()->subMonth()->month)
                 ->whereYear('created_at', Carbon::now()->subMonth()->year)
                 ->count();
-            
-            $propertyGrowth = $propertiesLastMonth > 0 
-                ? round((($propertiesThisMonth - $propertiesLastMonth) / $propertiesLastMonth) * 100, 2) 
-                : 0;
 
+            // Calculate growth percentage
+            $propertyGrowth = $propertiesLastMonth > 0
+                ? round((($propertiesThisMonth - $propertiesLastMonth) / $propertiesLastMonth) * 100, 2)
+                : ($propertiesThisMonth > 0 ? 100 : 0);
+
+            // Featured properties growth
             $featuredThisMonth = Property::where('is_featured', true)
                 ->whereMonth('created_at', Carbon::now()->month)
                 ->whereYear('created_at', Carbon::now()->year)
@@ -170,9 +168,8 @@ class DashboardController extends Controller
                 ->whereMonth('created_at', Carbon::now()->subMonth()->month)
                 ->whereYear('created_at', Carbon::now()->subMonth()->year)
                 ->count();
-            
-            $featuredGrowth = $featuredLastMonth > 0 
-                ? round((($featuredThisMonth - $featuredLastMonth) / $featuredLastMonth) * 100, 2) 
+            $featuredGrowth = $featuredLastMonth > 0
+                ? round((($featuredThisMonth - $featuredLastMonth) / $featuredLastMonth) * 100, 2)
                 : ($featuredThisMonth > 0 ? 100 : 0);
 
             return [
@@ -180,8 +177,8 @@ class DashboardController extends Controller
                 'featured_properties' => $featuredProperties,
                 'available_properties' => $availableProperties,
                 'rented_properties' => $rentedProperties,
-                'total_categories' => $totalCategories,
-                'total_locations' => $totalLocations,
+                'total_categories' => Category::count(),
+                'total_locations' => Locations::count(),
                 'properties_this_month' => $propertiesThisMonth,
                 'properties_last_month' => $propertiesLastMonth,
                 'property_growth' => $propertyGrowth,
@@ -494,6 +491,8 @@ class DashboardController extends Controller
     {
         return Cache::remember('dashboard.location_stats', 600, function () {
             return Locations::withCount('properties')
+                ->orderByDesc('properties_count')
+                ->take(10)
                 ->get()
                 ->map(function ($location) {
                     $avgPrice = Property::where('location_id', $location->id)
@@ -502,16 +501,13 @@ class DashboardController extends Controller
                         ->sum('estimated_monthly') ?? 0;
                     
                     return [
-                        'name' => $location->name,
-                        'code' => $location->code,
-                        'properties_count' => $location->properties_count,
+                        'name' => $location->name ?? 'Unknown',
+                        'code' => $location->code ?? 'N/A',
+                        'properties_count' => $location->properties_count ?? 0,
                         'avg_price' => round($avgPrice, 2),
                         'total_revenue' => round($totalRevenue, 2),
                     ];
-                })
-                ->sortByDesc('properties_count')
-                ->take(10)
-                ->values();
+                });
         });
     }
 
@@ -528,9 +524,9 @@ class DashboardController extends Controller
                         ->sum('estimated_monthly') ?? 0;
                     
                     return [
-                        'name' => $category->name,
-                        'description' => $category->description,
-                        'properties_count' => $category->properties_count,
+                        'name' => $category->name ?? 'Unknown',
+                        'description' => $category->description ?? '',
+                        'properties_count' => $category->properties_count ?? 0,
                         'avg_price' => round($avgPrice, 2),
                         'total_revenue' => round($totalRevenue, 2),
                     ];
@@ -630,8 +626,8 @@ class DashboardController extends Controller
     private function calculateOccupancyRate()
     {
         $totalProperties = Property::count();
-        $occupiedProperties = Property::where('status', 'occupied')->count();
-        return $totalProperties > 0 ? round(($occupiedProperties / $totalProperties) * 100, 2) : 0;
+        $rentedProperties = Property::where('status', 'Rented')->count();
+        return $totalProperties > 0 ? round(($rentedProperties / $totalProperties) * 100, 2) : 0;
     }
 
     private function getTopPerformingLocations()
