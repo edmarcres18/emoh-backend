@@ -235,7 +235,7 @@
                         <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Recent Rentals</h3>
                         <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Showing {{ recentRentals?.length || 0 }} most recent rental records</p>
                     </div>
-                    <Link v-if="recentRentals && recentRentals.length > 0" href="/admin/rentals" class="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors">
+                    <Link v-if="recentRentals && recentRentals.length > 0" href="/admin/rented" class="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors">
                         View All Rentals
                         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
@@ -288,7 +288,7 @@
                                     </span>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                    <Link :href="`/admin/rentals/${rental.id}`" class="text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300">
+                                    <Link :href="`/admin/rented/${rental.id}`" class="text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300">
                                         View
                                     </Link>
                                 </td>
@@ -355,7 +355,7 @@
                             </div>
 
                             <!-- Action Button -->
-                            <Link :href="`/admin/rentals/${rental.id}`" class="inline-flex items-center justify-center gap-2 px-3 py-2 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 text-xs font-medium rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/30 transition-colors">
+                            <Link :href="`/admin/rented/${rental.id}`" class="inline-flex items-center justify-center gap-2 px-3 py-2 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 text-xs font-medium rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/30 transition-colors">
                                 View Details
                                 <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
