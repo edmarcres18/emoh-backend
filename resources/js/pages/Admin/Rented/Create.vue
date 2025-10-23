@@ -197,7 +197,6 @@ const handleSecurityDepositInput = (event: Event) => {
                                 placeholder="Select a property..."
                                 search-placeholder="Search properties..."
                                 display-key="name"
-                                secondary-key="location"
                                 :disabled="isSubmitting"
                                 :error="form.errors.property_id"
                                 :required="true"
