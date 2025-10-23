@@ -8,6 +8,7 @@ import categories from '@/routes/categories';
 import locations from '@/routes/locations';
 import properties from '@/routes/properties';
 import admin from '@/routes/admin';
+import databaseBackup from '@/routes/database-backup';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/vue3';
 import { BookOpen, Folder, LayoutGrid, Tags, Navigation, House, Lock, Users, Shield, Settings, Home, Database } from 'lucide-vue-next';
@@ -107,7 +108,7 @@ const mainNavItems = computed((): NavItem[] => {
         if (isSystemAdmin.value) {
             items.push({
                 title: 'Database Backup',
-                href: '/admin/database-backup',
+                href: databaseBackup.index(),
                 icon: Database,
             });
         }
