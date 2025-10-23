@@ -11,6 +11,7 @@ use App\Http\Controllers\Admin\ClientController;
 use App\Http\Controllers\Admin\SiteSettingsController;
 use App\Http\Controllers\Admin\RentedController;
 use App\Http\Controllers\Admin\DatabaseBackupController;
+use App\Http\Controllers\Admin\GuestInquiryAdminController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -128,6 +129,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('rented/{rented}/renew', [RentedController::class, 'renew'])->name('admin.rented.renew');
         Route::post('rented/{rented}/end', [RentedController::class, 'end'])->name('admin.rented.end');
 
+        // Guest Inquiries page and resource routes
+        Route::get('guest-inquiries', [GuestInquiryAdminController::class, 'index'])->name('admin.guest-inquiries.index');
+        Route::get('guest-inquiries/{guestInquiry}', [GuestInquiryAdminController::class, 'show'])->name('admin.guest-inquiries.show');
+        Route::patch('guest-inquiries/{guestInquiry}/status', [GuestInquiryAdminController::class, 'updateStatus'])->name('admin.guest-inquiries.update-status');
+        Route::patch('guest-inquiries/{guestInquiry}/notes', [GuestInquiryAdminController::class, 'updateNotes'])->name('admin.guest-inquiries.update-notes');
+        Route::delete('guest-inquiries/{guestInquiry}', [GuestInquiryAdminController::class, 'destroy'])->name('admin.guest-inquiries.destroy');
 
         // API routes for roles management
         Route::prefix('api')->group(function () {
