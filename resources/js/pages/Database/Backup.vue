@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
 import { Head, router, usePage } from '@inertiajs/vue3';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import {
   Dialog,
   DialogContent,
@@ -10,7 +10,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { Database, Download, Upload, Trash2, RefreshCw, HardDrive, Server, Table } from 'lucide-vue-next';
+import { Database, Download, Upload, Trash2, RefreshCw, HardDrive, Server, Table, Search, ChevronLeft, ChevronRight } from 'lucide-vue-next';
 
 interface Backup {
   filename: string;
@@ -148,7 +148,7 @@ function handleFileChange(event: Event) {
 
 function confirmUploadRestore() {
   if (!uploadFile.value) {
-    showToast('error', 'Please select a SQL file to upload.');
+    // File validation will be handled by the button disabled state
     return;
   }
 
@@ -179,6 +179,67 @@ function formatDate(dateString: string): string {
     hour: '2-digit',
     minute: '2-digit',
   });
+}
+
+// Pagination and filtering
+const searchQuery = ref('');
+const currentPage = ref(1);
+const perPage = ref(10);
+const perPageOptions = [10, 25, 50, 100];
+
+// Filtered backups based on search
+const filteredBackups = computed(() => {
+  if (!searchQuery.value) return backups.value;
+  
+  const query = searchQuery.value.toLowerCase();
+  return backups.value.filter(backup => 
+    backup.filename.toLowerCase().includes(query) ||
+    backup.size.toLowerCase().includes(query) ||
+    formatDate(backup.created_at).toLowerCase().includes(query)
+  );
+});
+
+// Paginated backups
+const paginatedBackups = computed(() => {
+  const start = (currentPage.value - 1) * perPage.value;
+  const end = start + perPage.value;
+  return filteredBackups.value.slice(start, end);
+});
+
+// Total pages
+const totalPages = computed(() => {
+  return Math.ceil(filteredBackups.value.length / perPage.value);
+});
+
+// Pagination info
+const paginationInfo = computed(() => {
+  const start = filteredBackups.value.length === 0 ? 0 : (currentPage.value - 1) * perPage.value + 1;
+  const end = Math.min(currentPage.value * perPage.value, filteredBackups.value.length);
+  return { start, end, total: filteredBackups.value.length };
+});
+
+// Reset to first page when search or per page changes
+watch([searchQuery, perPage], () => {
+  currentPage.value = 1;
+});
+
+// Navigate pages
+function goToPage(page: number) {
+  if (page >= 1 && page <= totalPages.value) {
+    currentPage.value = page;
+  }
+}
+
+function nextPage() {
+  if (currentPage.value < totalPages.value) {
+    currentPage.value++;
+  }
+}
+
+function prevPage() {
+  if (currentPage.value > 1) {
+    currentPage.value--;
+  }
 }
 </script>
 
@@ -252,18 +313,53 @@ function formatDate(dateString: string): string {
       <!-- Backups List -->
       <div class="rounded-xl border border-sidebar-border/70 bg-white dark:border-sidebar-border dark:bg-neutral-900">
         <div class="border-b border-sidebar-border/70 p-4 dark:border-sidebar-border">
-          <h2 class="text-lg font-semibold text-neutral-900 dark:text-white">Available Backups</h2>
-          <p class="mt-1 text-sm text-neutral-500 dark:text-neutral-400">{{ backups.length }} backup{{ backups.length !== 1 ? 's' : '' }} available</p>
+          <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 class="text-lg font-semibold text-neutral-900 dark:text-white">Available Backups</h2>
+              <p class="mt-1 text-sm text-neutral-500 dark:text-neutral-400">{{ backups.length }} backup{{ backups.length !== 1 ? 's' : '' }} available</p>
+            </div>
+            
+            <!-- Search and Per Page -->
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <!-- Search -->
+              <div class="relative">
+                <Search class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
+                <input
+                  v-model="searchQuery"
+                  type="text"
+                  placeholder="Search backups..."
+                  class="w-full rounded-lg border border-neutral-300 bg-white py-2 pl-10 pr-4 text-sm text-neutral-900 placeholder-neutral-400 focus:border-neutral-500 focus:outline-none focus:ring-1 focus:ring-neutral-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white dark:placeholder-neutral-500 dark:focus:border-neutral-600 dark:focus:ring-neutral-600 sm:w-64"
+                />
+              </div>
+              
+              <!-- Per Page Selector -->
+              <div class="flex items-center gap-2">
+                <label class="text-sm text-neutral-600 dark:text-neutral-400">Show:</label>
+                <select
+                  v-model.number="perPage"
+                  class="rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 focus:border-neutral-500 focus:outline-none focus:ring-1 focus:ring-neutral-500 dark:border-neutral-700 dark:bg-neutral-800 dark:text-white dark:focus:border-neutral-600 dark:focus:ring-neutral-600"
+                >
+                  <option v-for="option in perPageOptions" :key="option" :value="option">{{ option }}</option>
+                </select>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div v-if="backups.length === 0" class="p-10 text-center">
           <Database class="mx-auto h-12 w-12 text-neutral-300 dark:text-neutral-700" />
           <p class="mt-4 text-sm text-neutral-600 dark:text-neutral-400">No backups yet. Create your first backup to get started.</p>
         </div>
+        
+        <div v-else-if="filteredBackups.length === 0" class="p-10 text-center">
+          <Search class="mx-auto h-12 w-12 text-neutral-300 dark:text-neutral-700" />
+          <p class="mt-4 text-sm text-neutral-600 dark:text-neutral-400">No backups found matching "{{ searchQuery }}"</p>
+          <button @click="searchQuery = ''" class="mt-2 text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300">Clear search</button>
+        </div>
 
         <!-- Mobile list -->
         <div v-else class="divide-y divide-sidebar-border/70 dark:divide-sidebar-border sm:hidden">
-          <div v-for="backup in backups" :key="backup.filename" class="p-4">
+          <div v-for="backup in paginatedBackups" :key="backup.filename" class="p-4">
             <div class="flex items-start gap-3">
               <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-neutral-100 dark:bg-neutral-800">
                 <Database class="h-5 w-5 text-neutral-600 dark:text-neutral-400" />
@@ -319,7 +415,7 @@ function formatDate(dateString: string): string {
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="backup in backups" :key="backup.filename" class="border-t border-sidebar-border/70 hover:bg-neutral-50 dark:border-neutral-800 dark:hover:bg-neutral-900/60">
+                <tr v-for="backup in paginatedBackups" :key="backup.filename" class="border-t border-sidebar-border/70 hover:bg-neutral-50 dark:border-neutral-800 dark:hover:bg-neutral-900/60">
                   <td class="px-4 py-3">
                     <div class="flex items-center gap-3">
                       <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-neutral-100 dark:bg-neutral-800">
@@ -365,6 +461,63 @@ function formatDate(dateString: string): string {
                 </tr>
               </tbody>
             </table>
+          </div>
+        </div>
+        
+        <!-- Pagination -->
+        <div v-if="filteredBackups.length > 0" class="border-t border-sidebar-border/70 px-4 py-3 dark:border-sidebar-border">
+          <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <!-- Pagination Info -->
+            <div class="text-sm text-neutral-600 dark:text-neutral-400">
+              Showing <span class="font-medium text-neutral-900 dark:text-white">{{ paginationInfo.start }}</span> to 
+              <span class="font-medium text-neutral-900 dark:text-white">{{ paginationInfo.end }}</span> of 
+              <span class="font-medium text-neutral-900 dark:text-white">{{ paginationInfo.total }}</span> results
+            </div>
+            
+            <!-- Pagination Controls -->
+            <div v-if="totalPages > 1" class="flex items-center gap-2">
+              <button
+                @click="prevPage"
+                :disabled="currentPage === 1"
+                class="inline-flex items-center justify-center rounded-lg border border-neutral-300 bg-white p-2 text-neutral-700 hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
+              >
+                <ChevronLeft class="h-4 w-4" />
+              </button>
+              
+              <div class="flex items-center gap-1">
+                <button
+                  v-for="page in Math.min(totalPages, 5)" 
+                  :key="page"
+                  @click="goToPage(page)"
+                  :class="[
+                    'h-9 w-9 rounded-lg text-sm font-medium transition-colors',
+                    currentPage === page
+                      ? 'bg-black text-white dark:bg-white dark:text-black'
+                      : 'border border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700'
+                  ]"
+                >
+                  {{ page }}
+                </button>
+                <span v-if="totalPages > 5" class="px-2 text-neutral-500 dark:text-neutral-400">...</span>
+                <button
+                  v-if="totalPages > 5 && currentPage !== totalPages"
+                  @click="goToPage(totalPages)"
+                  :class="[
+                    'h-9 w-9 rounded-lg text-sm font-medium transition-colors border border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700'
+                  ]"
+                >
+                  {{ totalPages }}
+                </button>
+              </div>
+              
+              <button
+                @click="nextPage"
+                :disabled="currentPage === totalPages"
+                class="inline-flex items-center justify-center rounded-lg border border-neutral-300 bg-white p-2 text-neutral-700 hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
+              >
+                <ChevronRight class="h-4 w-4" />
+              </button>
+            </div>
           </div>
         </div>
       </div>
