@@ -45,6 +45,7 @@ interface Props {
         location_id?: string;
         status?: string;
         is_featured?: string;
+        per_page?: number;
     };
     categories: Array<{ id: number; name: string }>;
     locations: Array<{ id: number; name: string }>;
@@ -80,6 +81,7 @@ const categoryFilter = ref(props.filters.category_id || '');
 const locationFilter = ref(props.filters.location_id || '');
 const statusFilter = ref(props.filters.status || '');
 const featuredFilter = ref(props.filters.is_featured || '');
+const perPage = ref(props.filters.per_page || 10);
 
 // Debounced search
 const debouncedSearch = debounce(() => {
@@ -90,6 +92,7 @@ const debouncedSearch = debounce(() => {
         location_id: locationFilter.value,
         status: statusFilter.value,
         is_featured: featuredFilter.value,
+        per_page: perPage.value,
     };
     
     router.get('/properties', filters, {
@@ -99,7 +102,7 @@ const debouncedSearch = debounce(() => {
 }, 300);
 
 // Watch for changes
-watch([searchQuery, sortBy, categoryFilter, locationFilter, statusFilter, featuredFilter], () => {
+watch([searchQuery, sortBy, categoryFilter, locationFilter, statusFilter, featuredFilter, perPage], () => {
     debouncedSearch();
 });
 
@@ -252,8 +255,19 @@ onMounted(() => {
                         </button>
                     </div>
                 </div>
-                
-                <div class="flex items-center justify-between">
+                <div class="flex items-center gap-4">
+                    <div class="flex items-center gap-2">
+                        <label class="text-sm text-gray-600 dark:text-gray-400">Show:</label>
+                        <select
+                            v-model.number="perPage"
+                            class="block px-3 py-2 border-0 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 shadow-sm ring-1 ring-gray-200 dark:ring-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all duration-200"
+                        >
+                            <option :value="10">10</option>
+                            <option :value="25">25</option>
+                            <option :value="50">50</option>
+                            <option :value="100">100</option>
+                        </select>
+                    </div>
                     <div class="text-sm text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-900 px-3 py-2 rounded-lg shadow-sm">
                         <span class="font-medium">{{ properties.from || 0 }}</span>-<span class="font-medium">{{ properties.to || 0 }}</span> of <span class="font-medium">{{ properties.total }}</span> properties
                     </div>

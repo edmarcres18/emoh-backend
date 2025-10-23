@@ -35,6 +35,7 @@ interface Props {
     filters: {
         search?: string;
         sort?: string;
+        per_page?: number;
     };
 }
 
@@ -57,17 +58,19 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 // Search functionality with server-side integration
-const searchQuery = ref(props.filters.search || '');
+const initialSearch = props.filters.search || '';
+const searchQuery = ref(initialSearch);
 // Ensure sortBy always defaults to 'latest' and validate the value
 const validSortOptions = ['latest', 'oldest', 'name_asc', 'name_desc'];
 const initialSort = props.filters.sort && validSortOptions.includes(props.filters.sort) 
     ? props.filters.sort 
     : 'latest';
 const sortBy = ref(initialSort);
+const perPage = ref(props.filters?.per_page || 10);
 
 // Debounced search to avoid too many requests
 const debouncedSearch = debounce((query: string) => {
-    router.get('/categories', { search: query, sort: sortBy.value }, {
+    router.get('/categories', { search: query, sort: sortBy.value, per_page: perPage.value }, {
         preserveState: true,
         replace: true,
     });
@@ -82,7 +85,15 @@ watch(searchQuery, (newQuery) => {
 watch(sortBy, (newSort) => {
     // Validate sort value before making request
     const validSort = validSortOptions.includes(newSort) ? newSort : 'latest';
-    router.get('/categories', { search: searchQuery.value, sort: validSort }, {
+    router.get('/categories', { search: searchQuery.value, sort: validSort, per_page: perPage.value }, {
+        preserveState: true,
+        replace: true,
+    });
+});
+
+// Watch for per-page changes
+watch(perPage, () => {
+    router.get('/categories', { search: searchQuery.value, sort: sortBy.value, per_page: perPage.value }, {
         preserveState: true,
         replace: true,
     });
@@ -191,6 +202,18 @@ onMounted(() => {
                     </div>
                 </div>
                 <div class="flex items-center gap-4">
+                    <div class="flex items-center gap-2">
+                        <label class="text-sm text-gray-600 dark:text-gray-400">Show:</label>
+                        <select
+                            v-model.number="perPage"
+                            class="block px-3 py-2 border-0 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 shadow-sm ring-1 ring-gray-200 dark:ring-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all duration-200"
+                        >
+                            <option :value="10">10</option>
+                            <option :value="25">25</option>
+                            <option :value="50">50</option>
+                            <option :value="100">100</option>
+                        </select>
+                    </div>
                     <div class="text-sm text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-900 px-3 py-2 rounded-lg shadow-sm">
                         <span class="font-medium">{{ categories.from || 0 }}</span>-<span class="font-medium">{{ categories.to || 0 }}</span> of <span class="font-medium">{{ categories.total }}</span> categories
                     </div>
