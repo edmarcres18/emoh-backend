@@ -39,5 +39,41 @@ export default defineConfig({
                 drop_debugger: true,
             },
         },
+        rollupOptions: {
+            output: {
+                manualChunks: (id) => {
+                    // Vendor chunks - split large libraries into separate chunks
+                    if (id.includes('node_modules')) {
+                        // Vue core libraries
+                        if (id.includes('vue') || id.includes('@vue') || id.includes('@inertiajs')) {
+                            return 'vendor-vue';
+                        }
+                        // Lucide icons - separate chunk due to large size
+                        if (id.includes('lucide-vue-next')) {
+                            return 'vendor-icons';
+                        }
+                        // UI libraries (Reka UI)
+                        if (id.includes('reka-ui')) {
+                            return 'vendor-ui';
+                        }
+                        // Charts library
+                        if (id.includes('chart.js')) {
+                            return 'vendor-charts';
+                        }
+                        // Table library
+                        if (id.includes('@tanstack/vue-table')) {
+                            return 'vendor-table';
+                        }
+                        // VueUse utilities
+                        if (id.includes('@vueuse')) {
+                            return 'vendor-vueuse';
+                        }
+                        // Other vendor dependencies
+                        return 'vendor-other';
+                    }
+                },
+            },
+        },
+        chunkSizeWarningLimit: 700,
     },
 });
