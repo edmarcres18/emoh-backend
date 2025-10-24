@@ -25,7 +25,11 @@ return [
         'http://localhost:5173',
         'http://127.0.0.1:5173',
         'https://chuweydev.site',
+        'https://www.chuweydev.site',
         'https://emoh.chuweydev.site',
+        'https://www.emoh.chuweydev.site',
+        'https://admin.chuweyweb.site',
+        'https://www.admin.chuweyweb.site',
     ],
 
     'allowed_origins_patterns' => [],
