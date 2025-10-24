@@ -613,7 +613,7 @@ class PropertyApiController extends Controller
             }
 
             // Find the property with relationships
-            $property = Property::with(['category', 'location', 'images'])
+            $property = Property::with(['category', 'location'])
                 ->where('id', $numericId)
                 ->first();
 
