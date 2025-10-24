@@ -13,7 +13,8 @@ Route::get('/user', function (Request $request) {
 
 Route::get('/contact-info', [SiteSettingsController::class, 'getContactInfo']);
 
-
+// Categories and Locations API Routes - Public access for property search
+Route::middleware(['throttle:60,1'])->group(function () {
     Route::get('/categories', function () {
         $categories = \App\Models\Category::select('id', 'name', 'description')
             ->orderBy('name', 'asc')
@@ -47,6 +48,8 @@ Route::get('/contact-info', [SiteSettingsController::class, 'getContactInfo']);
             ], 200);
         }
     });
+});
+
 // Client Authentication Routes
 Route::prefix('client')->group(function () {
     // Public routes - Generous throttle limits since controller has its own rate limiting
@@ -62,13 +65,13 @@ Route::prefix('client')->group(function () {
         Route::get('/profile', [ClientAuthController::class, 'profile']);
         Route::put('/profile', [ClientAuthController::class, 'updateProfile']);
         Route::get('/check-active', [ClientAuthController::class, 'checkActiveStatus']);
-        Route::post('/verify-email', [ClientAuthController::class, 'verifyEmail']);
-        Route::post('/resend-otp', [ClientAuthController::class, 'resendOTP']);
+        Route::post('/verify-email', [ClientAuthController::class, 'verifyEmail'])->middleware('throttle:10,1');
+        Route::post('/resend-otp', [ClientAuthController::class, 'resendOTP'])->middleware('throttle:10,1');
 
         // Email change routes with OTP verification
         Route::get('/check-email-change-eligibility', [ClientAuthController::class, 'checkEmailChangeEligibility']);
-        Route::post('/request-email-change', [ClientAuthController::class, 'requestEmailChange']);
-        Route::post('/verify-email-change', [ClientAuthController::class, 'verifyEmailChange']);
+        Route::post('/request-email-change', [ClientAuthController::class, 'requestEmailChange'])->middleware('throttle:5,1');
+        Route::post('/verify-email-change', [ClientAuthController::class, 'verifyEmailChange'])->middleware('throttle:10,1');
 
         // Client rental properties routes
         Route::get('/my-rentals', [ClientAuthController::class, 'getClientRentals']);
@@ -76,10 +79,10 @@ Route::prefix('client')->group(function () {
 });
 
 // Property API Routes
-Route::prefix('properties')->middleware(['api'])->group(function () {
+Route::prefix('properties')->middleware(['api', 'throttle:60,1'])->group(function () {
     // Public routes - no authentication required for property browsing
     Route::get('/all-properties', [PropertyApiController::class, 'getAllProperties']);
-    Route::get('/all-properties/{id}', [PropertyApiController::class, 'getProperty']);
+    Route::get('/all-properties/{id}', [PropertyApiController::class, 'getProperty'])->where('id', '[0-9]+');
     Route::get('/by-status-properties', [PropertyApiController::class, 'getPropertiesByStatus']);
     Route::get('/featured-properties', [PropertyApiController::class, 'getFeaturedProperties']);
     Route::get('/stats-properties', [PropertyApiController::class, 'getPropertyStats']);
@@ -88,7 +91,8 @@ Route::prefix('properties')->middleware(['api'])->group(function () {
 
 // Site Settings API Routes - Public read access with rate limiting, protected write access
 Route::prefix('site-settings')->group(function () {
-
+    // Public GET routes with rate limiting (60 requests per minute)
+    Route::middleware(['throttle:60,1'])->group(function () {
         // Get all settings
         Route::get('/all', [SiteSettingApiController::class, 'getAllSettings']);
 
@@ -145,7 +149,7 @@ Route::prefix('site-settings')->group(function () {
     });
 
     // Protected PUT routes - Require authentication (admin only)
-    Route::middleware(['auth:sanctum'])->group(function () {
+    Route::middleware(['auth:sanctum', 'throttle:30,1'])->group(function () {
         Route::put('/site-name', [SiteSettingApiController::class, 'updateSiteName']);
         Route::put('/site-logo', [SiteSettingApiController::class, 'updateSiteLogo']);
         Route::put('/site-favicon', [SiteSettingApiController::class, 'updateSiteFavicon']);
@@ -164,3 +168,4 @@ Route::prefix('site-settings')->group(function () {
         Route::put('/social-whatsapp', [SiteSettingApiController::class, 'updateSocialWhatsapp']);
         Route::put('/google-analytics-id', [SiteSettingApiController::class, 'updateGoogleAnalyticsId']);
     });
+});

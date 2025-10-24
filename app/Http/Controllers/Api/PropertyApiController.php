@@ -588,12 +588,23 @@ class PropertyApiController extends Controller
     public function getProperty(Request $request, $id): JsonResponse
     {
         try {
+            // Sanitize and validate the ID parameter
+            $cleanId = filter_var($id, FILTER_SANITIZE_NUMBER_INT);
+            $numericId = (int) $cleanId;
+
             // Validate the ID parameter
-            $validator = Validator::make(['id' => $id], [
-                'id' => 'required|integer|min:1'
+            $validator = Validator::make(['id' => $numericId], [
+                'id' => 'required|integer|min:1|max:999999'
             ]);
 
             if ($validator->fails()) {
+                \Log::warning('Invalid property ID provided', [
+                    'original_id' => $id,
+                    'cleaned_id' => $cleanId,
+                    'numeric_id' => $numericId,
+                    'errors' => $validator->errors()
+                ]);
+                
                 return response()->json([
                     'success' => false,
                     'message' => 'Invalid property ID',
@@ -603,10 +614,11 @@ class PropertyApiController extends Controller
 
             // Find the property with relationships
             $property = Property::with(['category', 'location', 'images'])
-                ->where('id', $id)
+                ->where('id', $numericId)
                 ->first();
 
             if (!$property) {
+                \Log::info('Property not found', ['id' => $numericId]);
                 return response()->json([
                     'success' => false,
                     'message' => 'Property not found',
@@ -614,6 +626,7 @@ class PropertyApiController extends Controller
                 ], 404);
             }
 
+            \Log::info('Property retrieved successfully', ['id' => $numericId]);
             return response()->json([
                 'success' => true,
                 'message' => 'Property retrieved successfully',
@@ -621,7 +634,12 @@ class PropertyApiController extends Controller
             ], 200);
 
         } catch (\Exception $e) {
-            \Log::error('Error fetching property: ' . $e->getMessage());
+            \Log::error('Error fetching property', [
+                'id' => $id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to retrieve property',
