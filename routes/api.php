@@ -11,29 +11,6 @@ Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware('auth:sanctum');
 
-// Health check endpoint
-Route::get('/health', function () {
-    try {
-        // Test database connection
-        \DB::connection()->getPdo();
-
-        return response()->json([
-            'status' => 'healthy',
-            'timestamp' => now()->toISOString(),
-            'database' => 'connected',
-            'environment' => app()->environment(),
-        ]);
-    } catch (\Exception $e) {
-        return response()->json([
-            'status' => 'unhealthy',
-            'timestamp' => now()->toISOString(),
-            'database' => 'disconnected',
-            'error' => $e->getMessage(),
-            'environment' => app()->environment(),
-        ], 500);
-    }
-});
-
 Route::get('/contact-info', [SiteSettingsController::class, 'getContactInfo']);
 
 // Categories and Locations API Routes - Public access for property search

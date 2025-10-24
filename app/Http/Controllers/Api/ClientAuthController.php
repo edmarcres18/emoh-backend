@@ -98,139 +98,86 @@ class ClientAuthController extends Controller
      */
     public function login(Request $request): JsonResponse
     {
-        try {
-            // Log the incoming request for debugging
-            \Log::info('Client login attempt', [
-                'ip' => $request->ip(),
-                'user_agent' => $request->userAgent(),
-                'email' => $request->input('email'),
-                'has_password' => !empty($request->input('password')),
-                'fingerprint' => $request->input('fingerprint'),
-            ]);
+        $validator = Validator::make($request->all(), [
+            'email' => 'required|email',
+            'password' => 'required|string',
+            'fingerprint' => 'nullable|string|max:100', // Browser fingerprint
+        ]);
 
-            $validator = Validator::make($request->all(), [
-                'email' => 'required|email',
-                'password' => 'required|string',
-                'fingerprint' => 'nullable|string|max:100', // Browser fingerprint
-            ]);
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
+        }
 
-            if ($validator->fails()) {
-                \Log::warning('Client login validation failed', [
-                    'errors' => $validator->errors(),
-                    'email' => $request->input('email'),
-                ]);
+        $client = Client::where('email', $request->email)->first();
 
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Validation failed',
-                    'errors' => $validator->errors()
-                ], 422);
-            }
-
-            $client = Client::where('email', $request->email)->first();
-
-            // Check if account exists and is locked
-            if ($client && $client->isLocked()) {
-                $minutesRemaining = $client->getMinutesUntilUnlock();
-                \Log::info('Client login blocked - account locked', [
-                    'client_id' => $client->id,
+        // Check if account exists and is locked
+        if ($client && $client->isLocked()) {
+            $minutesRemaining = $client->getMinutesUntilUnlock();
+            return response()->json([
+                'success' => false,
+                'message' => 'Account temporarily locked due to multiple failed login attempts.',
+                'data' => [
+                    'locked' => true,
                     'minutes_remaining' => $minutesRemaining,
-                ]);
+                    'unlock_at' => $client->locked_until?->format('Y-m-d H:i:s')
+                ]
+            ], 423); // 423 Locked
+        }
+
+        // Validate credentials
+        if (!$client || !Hash::check($request->password, $client->password)) {
+            // Record failed attempt if client exists
+            if ($client) {
+                $client->recordFailedLogin();
+
+                $attemptsRemaining = max(0, 5 - $client->failed_login_attempts);
 
                 return response()->json([
                     'success' => false,
-                    'message' => 'Account temporarily locked due to multiple failed login attempts.',
+                    'message' => 'Invalid credentials',
                     'data' => [
-                        'locked' => true,
-                        'minutes_remaining' => $minutesRemaining,
-                        'unlock_at' => $client->locked_until?->format('Y-m-d H:i:s')
-                    ]
-                ], 423); // 423 Locked
-            }
-
-            // Validate credentials
-            if (!$client || !Hash::check($request->password, $client->password)) {
-                // Record failed attempt if client exists
-                if ($client) {
-                    $client->recordFailedLogin();
-
-                    $attemptsRemaining = max(0, 5 - $client->failed_login_attempts);
-
-                    \Log::warning('Client login failed - invalid credentials', [
-                        'client_id' => $client->id,
                         'attempts_remaining' => $attemptsRemaining,
-                    ]);
-
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Invalid credentials',
-                        'data' => [
-                            'attempts_remaining' => $attemptsRemaining,
-                            'warning' => $attemptsRemaining <= 2 ? 'Account will be locked after ' . $attemptsRemaining . ' more failed attempt(s)' : null
-                        ]
-                    ], 401);
-                }
-
-                // Generic error for non-existent accounts (prevent user enumeration)
-                \Log::warning('Client login failed - account not found', [
-                    'email' => $request->input('email'),
-                ]);
-
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Invalid credentials'
+                        'warning' => $attemptsRemaining <= 2 ? 'Account will be locked after ' . $attemptsRemaining . ' more failed attempt(s)' : null
+                    ]
                 ], 401);
             }
 
-            // Check if client account is active
-            if (!$client->is_active) {
-                \Log::warning('Client login blocked - account inactive', [
-                    'client_id' => $client->id,
-                ]);
-
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Your account has been deactivated. Please contact support for assistance.'
-                ], 403);
-            }
-
-            // Get client IP
-            $ip = $request->ip();
-            $fingerprint = $request->input('fingerprint');
-
-            // Record successful login
-            $client->recordSuccessfulLogin($ip, $fingerprint);
-
-            $token = $client->createToken($this->resolveTokenName($request))->plainTextToken;
-
-            \Log::info('Client login successful', [
-                'client_id' => $client->id,
-                'ip' => $ip,
-            ]);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Login successful',
-                'data' => [
-                    'client' => $this->transformClient($client),
-                    'token' => $token
-                ]
-            ]);
-
-        } catch (\Exception $e) {
-            \Log::error('Client login error', [
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'email' => $request->input('email'),
-                'ip' => $request->ip(),
-            ]);
-
+            // Generic error for non-existent accounts (prevent user enumeration)
             return response()->json([
                 'success' => false,
-                'message' => 'Login failed. Please try again later.',
-                'error' => config('app.debug') ? $e->getMessage() : null
-            ], 500);
+                'message' => 'Invalid credentials'
+            ], 401);
         }
+
+        // Check if client account is active
+        if (!$client->is_active) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Your account has been deactivated. Please contact support for assistance.'
+            ], 403);
+        }
+
+        // Get client IP
+        $ip = $request->ip();
+        $fingerprint = $request->input('fingerprint');
+
+        // Record successful login
+        $client->recordSuccessfulLogin($ip, $fingerprint);
+
+        $token = $client->createToken($this->resolveTokenName($request))->plainTextToken;
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Login successful',
+            'data' => [
+                'client' => $this->transformClient($client),
+                'token' => $token
+            ]
+        ]);
     }
 
     /**
