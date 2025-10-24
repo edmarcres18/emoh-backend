@@ -581,4 +581,53 @@ class PropertyApiController extends Controller
             ], 200);
         }
     }
+
+    /**
+     * Get a single property by ID
+     */
+    public function getProperty(Request $request, $id): JsonResponse
+    {
+        try {
+            // Validate the ID parameter
+            $validator = Validator::make(['id' => $id], [
+                'id' => 'required|integer|min:1'
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid property ID',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            // Find the property with relationships
+            $property = Property::with(['category', 'location', 'images'])
+                ->where('id', $id)
+                ->first();
+
+            if (!$property) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Property not found',
+                    'data' => null
+                ], 404);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Property retrieved successfully',
+                'data' => $property
+            ], 200);
+
+        } catch (\Exception $e) {
+            \Log::error('Error fetching property: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve property',
+                'error' => config('app.debug') ? $e->getMessage() : 'Internal server error',
+                'data' => null
+            ], 500);
+        }
+    }
 }
