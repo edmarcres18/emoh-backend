@@ -14,47 +14,45 @@ Route::get('/user', function (Request $request) {
 Route::get('/contact-info', [SiteSettingsController::class, 'getContactInfo']);
 
 // Categories and Locations API Routes - Public access for property search
-Route::middleware(['throttle:60,1'])->group(function () {
-    Route::get('/categories', function () {
-        $categories = \App\Models\Category::select('id', 'name', 'description')
+Route::get('/categories', function () {
+    $categories = \App\Models\Category::select('id', 'name', 'description')
+        ->orderBy('name', 'asc')
+        ->get();
+
+    return response()->json([
+        'success' => true,
+        'message' => 'Categories retrieved successfully',
+        'data' => $categories
+    ], 200);
+});
+
+Route::get('/locations', function () {
+    try {
+        $locations = \App\Models\Locations::select('id', 'name', 'description')
             ->orderBy('name', 'asc')
             ->get();
 
         return response()->json([
             'success' => true,
-            'message' => 'Categories retrieved successfully',
-            'data' => $categories
+            'message' => 'Locations retrieved successfully',
+            'data' => $locations
         ], 200);
-    });
-
-    Route::get('/locations', function () {
-        try {
-            $locations = \App\Models\Locations::select('id', 'name', 'description')
-                ->orderBy('name', 'asc')
-                ->get();
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Locations retrieved successfully',
-                'data' => $locations
-            ], 200);
-        } catch (\Exception $e) {
-            \Log::error('Error fetching locations: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to retrieve locations',
-                'error' => config('app.debug') ? $e->getMessage() : 'Internal server error',
-                'data' => []
-            ], 200);
-        }
-    });
+    } catch (\Exception $e) {
+        \Log::error('Error fetching locations: ' . $e->getMessage());
+        return response()->json([
+            'success' => false,
+            'message' => 'Failed to retrieve locations',
+            'error' => config('app.debug') ? $e->getMessage() : 'Internal server error',
+            'data' => []
+        ], 200);
+    }
 });
 
 // Client Authentication Routes
 Route::prefix('client')->group(function () {
-    // Public routes - Generous throttle limits since controller has its own rate limiting
-    Route::post('/register', [ClientAuthController::class, 'register'])->middleware('throttle:60,1');
-    Route::post('/login', [ClientAuthController::class, 'login'])->middleware('throttle:60,1');
+    // Public routes
+    Route::post('/register', [ClientAuthController::class, 'register']);
+    Route::post('/login', [ClientAuthController::class, 'login']);
     Route::get('/auth/google', [ClientAuthController::class, 'redirectToGoogle']);
     Route::get('/auth/google/callback', [ClientAuthController::class, 'handleGoogleCallback']);
 
@@ -65,13 +63,13 @@ Route::prefix('client')->group(function () {
         Route::get('/profile', [ClientAuthController::class, 'profile']);
         Route::put('/profile', [ClientAuthController::class, 'updateProfile']);
         Route::get('/check-active', [ClientAuthController::class, 'checkActiveStatus']);
-        Route::post('/verify-email', [ClientAuthController::class, 'verifyEmail'])->middleware('throttle:10,1');
-        Route::post('/resend-otp', [ClientAuthController::class, 'resendOTP'])->middleware('throttle:10,1');
+        Route::post('/verify-email', [ClientAuthController::class, 'verifyEmail']);
+        Route::post('/resend-otp', [ClientAuthController::class, 'resendOTP']);
 
         // Email change routes with OTP verification
         Route::get('/check-email-change-eligibility', [ClientAuthController::class, 'checkEmailChangeEligibility']);
-        Route::post('/request-email-change', [ClientAuthController::class, 'requestEmailChange'])->middleware('throttle:5,1');
-        Route::post('/verify-email-change', [ClientAuthController::class, 'verifyEmailChange'])->middleware('throttle:10,1');
+        Route::post('/request-email-change', [ClientAuthController::class, 'requestEmailChange']);
+        Route::post('/verify-email-change', [ClientAuthController::class, 'verifyEmailChange']);
 
         // Client rental properties routes
         Route::get('/my-rentals', [ClientAuthController::class, 'getClientRentals']);
@@ -79,7 +77,7 @@ Route::prefix('client')->group(function () {
 });
 
 // Property API Routes
-Route::prefix('properties')->middleware(['api', 'throttle:60,1'])->group(function () {
+Route::prefix('properties')->middleware(['api'])->group(function () {
     // Public routes - no authentication required for property browsing
     Route::get('/all-properties', [PropertyApiController::class, 'getAllProperties']);
     Route::get('/all-properties/{id}', [PropertyApiController::class, 'getProperty'])->where('id', '[0-9]+');
@@ -89,67 +87,65 @@ Route::prefix('properties')->middleware(['api', 'throttle:60,1'])->group(functio
     Route::get('/statuses-properties', [PropertyApiController::class, 'getAvailableStatuses']);
 });
 
-// Site Settings API Routes - Public read access with rate limiting, protected write access
+// Site Settings API Routes - Public read access, protected write access
 Route::prefix('site-settings')->group(function () {
-    // Public GET routes with rate limiting (60 requests per minute)
-    Route::middleware(['throttle:60,1'])->group(function () {
-        // Get all settings
-        Route::get('/all', [SiteSettingApiController::class, 'getAllSettings']);
+    // Public GET routes
+    // Get all settings
+    Route::get('/all', [SiteSettingApiController::class, 'getAllSettings']);
 
-        // Site name
-        Route::get('/site-name', [SiteSettingApiController::class, 'getSiteName']);
+    // Site name
+    Route::get('/site-name', [SiteSettingApiController::class, 'getSiteName']);
 
-        // Site logo
-        Route::get('/site-logo', [SiteSettingApiController::class, 'getSiteLogo']);
+    // Site logo
+    Route::get('/site-logo', [SiteSettingApiController::class, 'getSiteLogo']);
 
-        // Site favicon
-        Route::get('/site-favicon', [SiteSettingApiController::class, 'getSiteFavicon']);
+    // Site favicon
+    Route::get('/site-favicon', [SiteSettingApiController::class, 'getSiteFavicon']);
 
-        // Site description
-        Route::get('/site-description', [SiteSettingApiController::class, 'getSiteDescription']);
+    // Site description
+    Route::get('/site-description', [SiteSettingApiController::class, 'getSiteDescription']);
 
-        // Maintenance mode
-        Route::get('/maintenance-mode', [SiteSettingApiController::class, 'getMaintenanceMode']);
+    // Maintenance mode
+    Route::get('/maintenance-mode', [SiteSettingApiController::class, 'getMaintenanceMode']);
 
-        // Contact email
-        Route::get('/contact-email', [SiteSettingApiController::class, 'getContactEmail']);
+    // Contact email
+    Route::get('/contact-email', [SiteSettingApiController::class, 'getContactEmail']);
 
-        // Contact phone
-        Route::get('/contact-phone', [SiteSettingApiController::class, 'getContactPhone']);
+    // Contact phone
+    Route::get('/contact-phone', [SiteSettingApiController::class, 'getContactPhone']);
 
-        // Phone number
-        Route::get('/phone-number', [SiteSettingApiController::class, 'getPhoneNumber']);
+    // Phone number
+    Route::get('/phone-number', [SiteSettingApiController::class, 'getPhoneNumber']);
 
-        // Address
-        Route::get('/address', [SiteSettingApiController::class, 'getAddress']);
+    // Address
+    Route::get('/address', [SiteSettingApiController::class, 'getAddress']);
 
-        // Social media - Facebook
-        Route::get('/social-facebook', [SiteSettingApiController::class, 'getSocialFacebook']);
+    // Social media - Facebook
+    Route::get('/social-facebook', [SiteSettingApiController::class, 'getSocialFacebook']);
 
-        // Social media - Twitter
-        Route::get('/social-twitter', [SiteSettingApiController::class, 'getSocialTwitter']);
+    // Social media - Twitter
+    Route::get('/social-twitter', [SiteSettingApiController::class, 'getSocialTwitter']);
 
-        // Social media - Instagram
-        Route::get('/social-instagram', [SiteSettingApiController::class, 'getSocialInstagram']);
+    // Social media - Instagram
+    Route::get('/social-instagram', [SiteSettingApiController::class, 'getSocialInstagram']);
 
-        // Social media - LinkedIn
-        Route::get('/social-linkedin', [SiteSettingApiController::class, 'getSocialLinkedin']);
+    // Social media - LinkedIn
+    Route::get('/social-linkedin', [SiteSettingApiController::class, 'getSocialLinkedin']);
 
-        // Social media - Telegram
-        Route::get('/social-telegram', [SiteSettingApiController::class, 'getSocialTelegram']);
+    // Social media - Telegram
+    Route::get('/social-telegram', [SiteSettingApiController::class, 'getSocialTelegram']);
 
-        // Social media - Viber
-        Route::get('/social-viber', [SiteSettingApiController::class, 'getSocialViber']);
+    // Social media - Viber
+    Route::get('/social-viber', [SiteSettingApiController::class, 'getSocialViber']);
 
-        // Social media - WhatsApp
-        Route::get('/social-whatsapp', [SiteSettingApiController::class, 'getSocialWhatsapp']);
+    // Social media - WhatsApp
+    Route::get('/social-whatsapp', [SiteSettingApiController::class, 'getSocialWhatsapp']);
 
-        // Google Analytics
-        Route::get('/google-analytics-id', [SiteSettingApiController::class, 'getGoogleAnalyticsId']);
-    });
+    // Google Analytics
+    Route::get('/google-analytics-id', [SiteSettingApiController::class, 'getGoogleAnalyticsId']);
 
     // Protected PUT routes - Require authentication (admin only)
-    Route::middleware(['auth:sanctum', 'throttle:30,1'])->group(function () {
+    Route::middleware(['auth:sanctum'])->group(function () {
         Route::put('/site-name', [SiteSettingApiController::class, 'updateSiteName']);
         Route::put('/site-logo', [SiteSettingApiController::class, 'updateSiteLogo']);
         Route::put('/site-favicon', [SiteSettingApiController::class, 'updateSiteFavicon']);
