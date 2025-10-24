@@ -60,7 +60,7 @@ class PropertyApiController extends Controller
 
             // Build query with eager loading to prevent N+1 issues
             $query = Property::query();
-            
+
             // Apply status filter
             $query->where('status', $request->status);
 
@@ -71,7 +71,7 @@ class PropertyApiController extends Controller
                 $query->where(function ($q) use ($searchTerm) {
                     $q->where('property_name', 'like', "%{$searchTerm}%")
                       ->orWhere('details', 'like', "%{$searchTerm}%");
-                    
+
                     // Only search relationships if they exist
                     if (method_exists(Property::class, 'location')) {
                         $q->orWhereHas('location', function ($locationQuery) use ($searchTerm) {
@@ -79,7 +79,7 @@ class PropertyApiController extends Controller
                                          ->orWhere('description', 'like', "%{$searchTerm}%");
                         });
                     }
-                    
+
                     if (method_exists(Property::class, 'category')) {
                         $q->orWhereHas('category', function ($categoryQuery) use ($searchTerm) {
                             $categoryQuery->where('name', 'like', "%{$searchTerm}%");
@@ -116,7 +116,7 @@ class PropertyApiController extends Controller
 
             // Apply sorting with validation
             $query->orderBy($sortBy, $sortOrder);
-            
+
             // Load relationships only if they exist
             $with = [];
             if (method_exists(Property::class, 'category')) {
@@ -227,7 +227,7 @@ class PropertyApiController extends Controller
 
             // Build query with eager loading to prevent N+1 issues
             $query = Property::query();
-            
+
             // Apply featured filter
             $query->where('is_featured', true);
 
@@ -238,7 +238,7 @@ class PropertyApiController extends Controller
                 $query->where(function ($q) use ($searchTerm) {
                     $q->where('property_name', 'like', "%{$searchTerm}%")
                       ->orWhere('details', 'like', "%{$searchTerm}%");
-                    
+
                     // Only search relationships if they exist
                     if (method_exists(Property::class, 'location')) {
                         $q->orWhereHas('location', function ($locationQuery) use ($searchTerm) {
@@ -246,7 +246,7 @@ class PropertyApiController extends Controller
                                          ->orWhere('description', 'like', "%{$searchTerm}%");
                         });
                     }
-                    
+
                     if (method_exists(Property::class, 'category')) {
                         $q->orWhereHas('category', function ($categoryQuery) use ($searchTerm) {
                             $categoryQuery->where('name', 'like', "%{$searchTerm}%");
@@ -288,7 +288,7 @@ class PropertyApiController extends Controller
 
             // Apply sorting with validation
             $query->orderBy($sortBy, $sortOrder);
-            
+
             // Load relationships only if they exist
             $with = [];
             if (method_exists(Property::class, 'category')) {
@@ -414,6 +414,70 @@ class PropertyApiController extends Controller
     }
 
     /**
+     * Get a single property by ID with full details
+     */
+    public function show(Request $request, $id): JsonResponse
+    {
+        $validator = Validator::make(['id' => $id], [
+            'id' => 'required|integer|exists:properties,id'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid property ID',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        try {
+            // Build query with eager loading to prevent N+1 issues
+            $query = Property::query();
+
+            // Load relationships only if they exist
+            $with = [];
+            if (method_exists(Property::class, 'category')) {
+                $with[] = 'category';
+            }
+            if (method_exists(Property::class, 'location')) {
+                $with[] = 'location';
+            }
+            if (!empty($with)) {
+                $query->with($with);
+            }
+
+            $property = $query->findOrFail($id);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Property retrieved successfully',
+                'data' => $property
+            ], 200);
+
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Property not found',
+                'error' => 'The requested property does not exist'
+            ], 404);
+        } catch (\Illuminate\Database\QueryException $e) {
+            \Log::error('Database error in show property: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Database error occurred while retrieving property',
+                'error' => config('app.debug') ? $e->getMessage() : 'Please try again later'
+            ], 500);
+        } catch (\Exception $e) {
+            \Log::error('Error in show property: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve property',
+                'error' => config('app.debug') ? $e->getMessage() : 'An unexpected error occurred'
+            ], 500);
+        }
+    }
+
+    /**
      * Get all properties ordered by latest with pagination and filtering
      */
     public function getAllProperties(Request $request): JsonResponse
@@ -462,7 +526,7 @@ class PropertyApiController extends Controller
                 $query->where(function ($q) use ($searchTerm) {
                     $q->where('property_name', 'like', "%{$searchTerm}%")
                       ->orWhere('details', 'like', "%{$searchTerm}%");
-                    
+
                     // Only search relationships if they exist
                     if (method_exists(Property::class, 'location')) {
                         $q->orWhereHas('location', function ($locationQuery) use ($searchTerm) {
@@ -470,7 +534,7 @@ class PropertyApiController extends Controller
                                          ->orWhere('description', 'like', "%{$searchTerm}%");
                         });
                     }
-                    
+
                     if (method_exists(Property::class, 'category')) {
                         $q->orWhereHas('category', function ($categoryQuery) use ($searchTerm) {
                             $categoryQuery->where('name', 'like', "%{$searchTerm}%");
@@ -512,7 +576,7 @@ class PropertyApiController extends Controller
 
             // Apply sorting with validation (default: latest first)
             $query->orderBy($sortBy, $sortOrder);
-            
+
             // Load relationships only if they exist
             $with = [];
             if (method_exists(Property::class, 'category')) {
