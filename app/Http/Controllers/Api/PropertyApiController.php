@@ -604,7 +604,7 @@ class PropertyApiController extends Controller
                     'numeric_id' => $numericId,
                     'errors' => $validator->errors()
                 ]);
-                
+
                 return response()->json([
                     'success' => false,
                     'message' => 'Invalid property ID',
@@ -639,7 +639,7 @@ class PropertyApiController extends Controller
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
-            
+
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to retrieve property',
