@@ -414,7 +414,8 @@ class PropertyApiController extends Controller
     }
 
     /**
-     * Get a single property by ID with full details
+     * Get a single property by ID with comprehensive details
+     * Returns all property data including relationships, rental history, and statistics
      */
     public function show(Request $request, $id): JsonResponse
     {
@@ -431,34 +432,95 @@ class PropertyApiController extends Controller
         }
 
         try {
-            // Build query with eager loading to prevent N+1 issues
+            // Build comprehensive query with all relationships
             $query = Property::query();
 
-            // Load relationships only if they exist
-            $with = [];
-            if (method_exists(Property::class, 'category')) {
-                $with[] = 'category';
-            }
-            if (method_exists(Property::class, 'location')) {
-                $with[] = 'location';
-            }
-            if (!empty($with)) {
-                $query->with($with);
-            }
+            // Load all available relationships with nested data
+            $with = [
+                'category:id,name,description',
+                'location:id,name,description',
+                'rentals' => function ($query) {
+                    $query->with(['client:id,first_name,last_name,email,phone'])
+                          ->orderBy('created_at', 'desc')
+                          ->limit(5); // Get last 5 rentals for history
+                }
+            ];
+
+            $query->with($with);
 
             $property = $query->findOrFail($id);
 
+            // Get comprehensive property statistics
+            $propertyStats = [
+                'total_rentals' => $property->rentals()->count(),
+                'active_rentals' => $property->rentals()->where('status', 'active')->count(),
+                'total_revenue' => $property->rentals()
+                    ->whereIn('status', ['active', 'expired', 'terminated'])
+                    ->sum('monthly_rent'),
+                'average_monthly_rent' => $property->rentals()
+                    ->whereIn('status', ['active', 'expired', 'terminated'])
+                    ->avg('monthly_rent'),
+                'current_tenant' => $property->currentTenant(),
+                'is_rented' => $property->isRented(),
+                'can_be_updated' => $property->canBeUpdated(),
+                'current_monthly_rate' => $property->getCurrentMonthlyRate(),
+            ];
+
+            // Ensure all required fields are present with defaults
+            $propertyData = [
+                'id' => $property->id,
+                'property_name' => $property->property_name ?? 'Unnamed Property',
+                'estimated_monthly' => $property->estimated_monthly ?? 0,
+                'lot_area' => $property->lot_area ?? 0,
+                'floor_area' => $property->floor_area ?? 0,
+                'details' => $property->details ?? 'No description available.',
+                'status' => $property->status ?? 'Unknown',
+                'is_featured' => $property->is_featured ?? false,
+                'images' => $property->images ?? [],
+                'created_at' => $property->created_at,
+                'updated_at' => $property->updated_at,
+                'category' => $property->category ? [
+                    'id' => $property->category->id,
+                    'name' => $property->category->name ?? 'Unknown Category',
+                    'description' => $property->category->description ?? ''
+                ] : null,
+                'location' => $property->location ? [
+                    'id' => $property->location->id,
+                    'name' => $property->location->name ?? 'Unknown Location',
+                    'description' => $property->location->description ?? ''
+                ] : null,
+                'rental_history' => $property->rentals->map(function ($rental) {
+                    return [
+                        'id' => $rental->id,
+                        'status' => $rental->status,
+                        'monthly_rent' => $rental->monthly_rent,
+                        'start_date' => $rental->start_date,
+                        'end_date' => $rental->end_date,
+                        'client' => $rental->client ? [
+                            'id' => $rental->client->id,
+                            'name' => trim($rental->client->first_name . ' ' . $rental->client->last_name),
+                            'email' => $rental->client->email,
+                            'phone' => $rental->client->phone
+                        ] : null,
+                        'created_at' => $rental->created_at,
+                        'updated_at' => $rental->updated_at
+                    ];
+                }),
+                'statistics' => $propertyStats
+            ];
+
             return response()->json([
                 'success' => true,
-                'message' => 'Property retrieved successfully',
-                'data' => $property
+                'message' => 'Property retrieved successfully with comprehensive details',
+                'data' => $propertyData
             ], 200);
 
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            \Log::warning('Property not found: ' . $id);
             return response()->json([
                 'success' => false,
                 'message' => 'Property not found',
-                'error' => 'The requested property does not exist'
+                'error' => 'The requested property does not exist or has been removed'
             ], 404);
         } catch (\Illuminate\Database\QueryException $e) {
             \Log::error('Database error in show property: ' . $e->getMessage());
