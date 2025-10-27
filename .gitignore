@@ -29,4 +29,4 @@ yarn-error.log
 Dockerfile
 docker-compose.yml
 .cursor
-env.prod
+# env.prod

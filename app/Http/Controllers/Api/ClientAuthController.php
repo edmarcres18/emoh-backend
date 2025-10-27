@@ -52,58 +52,45 @@ class ClientAuthController extends Controller
      */
     public function register(Request $request): JsonResponse
     {
-        try {
-            $validator = Validator::make($request->all(), [
-                'name' => 'required|string|max:255',
-                'email' => 'required|string|email|max:255|unique:clients',
-                'password' => 'required|string|min:8|confirmed',
-                'phone' => 'nullable|string|max:20',
-            ]);
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:clients',
+            'password' => 'required|string|min:8|confirmed',
+            'phone' => 'nullable|string|max:20',
+        ]);
 
-            if ($validator->fails()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Validation failed',
-                    'errors' => $validator->errors()
-                ], 422);
-            }
-
-            $client = Client::create([
-                'name' => $request->name,
-                'email' => $request->email,
-                'password' => Hash::make($request->password),
-                'phone' => $request->phone,
-                'is_active' => true, // New clients are active by default
-                'last_activity' => now(), // Initialize activity tracking
-            ]);
-
-            // Generate and send OTP for email verification (real-time)
-            $otp = $client->generateEmailVerificationOTP();
-            Mail::to($client->email)->send(new ClientOTPVerification($client, $otp));
-
-            $token = $client->createToken($this->resolveTokenName($request))->plainTextToken;
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Client registered successfully. Please check your email for the verification code.',
-                'data' => [
-                    'client' => $this->transformClient($client),
-                    'token' => $token,
-                    'requires_email_verification' => true
-                ]
-            ], 201);
-        } catch (\Exception $e) {
-            \Log::error('Client registration failed: ' . $e->getMessage(), [
-                'request_data' => $request->except(['password', 'password_confirmation']),
-                'trace' => $e->getTraceAsString()
-            ]);
-
+        if ($validator->fails()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Registration failed. Please try again later.',
-                'error' => config('app.debug') ? $e->getMessage() : null
-            ], 500);
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
         }
+
+        $client = Client::create([
+            'name' => $request->name,
+            'email' => $request->email,
+            'password' => Hash::make($request->password),
+            'phone' => $request->phone,
+            'is_active' => true, // New clients are active by default
+            'last_activity' => now(), // Initialize activity tracking
+        ]);
+
+        // Generate and send OTP for email verification (real-time)
+        $otp = $client->generateEmailVerificationOTP();
+        Mail::to($client->email)->send(new ClientOTPVerification($client, $otp));
+
+        $token = $client->createToken($this->resolveTokenName($request))->plainTextToken;
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Client registered successfully. Please check your email for the verification code.',
+            'data' => [
+                'client' => $this->transformClient($client),
+                'token' => $token,
+                'requires_email_verification' => true
+            ]
+        ], 201);
     }
 
     /**
@@ -111,22 +98,21 @@ class ClientAuthController extends Controller
      */
     public function login(Request $request): JsonResponse
     {
-        try {
-            $validator = Validator::make($request->all(), [
-                'email' => 'required|email',
-                'password' => 'required|string',
-                'fingerprint' => 'nullable|string|max:100', // Browser fingerprint
-            ]);
+        $validator = Validator::make($request->all(), [
+            'email' => 'required|email',
+            'password' => 'required|string',
+            'fingerprint' => 'nullable|string|max:100', // Browser fingerprint
+        ]);
 
-            if ($validator->fails()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Validation failed',
-                    'errors' => $validator->errors()
-                ], 422);
-            }
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
+        }
 
-            $client = Client::where('email', $request->email)->first();
+        $client = Client::where('email', $request->email)->first();
 
         // Check if account exists and is locked
         if ($client && $client->isLocked()) {
@@ -182,28 +168,16 @@ class ClientAuthController extends Controller
         // Record successful login
         $client->recordSuccessfulLogin($ip, $fingerprint);
 
-            $token = $client->createToken($this->resolveTokenName($request))->plainTextToken;
+        $token = $client->createToken($this->resolveTokenName($request))->plainTextToken;
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Login successful',
-                'data' => [
-                    'client' => $this->transformClient($client),
-                    'token' => $token
-                ]
-            ]);
-        } catch (\Exception $e) {
-            \Log::error('Client login failed: ' . $e->getMessage(), [
-                'email' => $request->email ?? 'unknown',
-                'trace' => $e->getTraceAsString()
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Login failed. Please try again later.',
-                'error' => config('app.debug') ? $e->getMessage() : null
-            ], 500);
-        }
+        return response()->json([
+            'success' => true,
+            'message' => 'Login successful',
+            'data' => [
+                'client' => $this->transformClient($client),
+                'token' => $token
+            ]
+        ]);
     }
 
     /**
