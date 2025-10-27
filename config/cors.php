@@ -26,6 +26,8 @@ return [
         'http://127.0.0.1:5173',
         'https://chuweydev.site',
         'https://emoh.chuweydev.site',
+        'https://www.chuweydev.site',
+        'https://www.emoh.chuweydev.site',
     ],
 
     'allowed_origins_patterns' => [],
