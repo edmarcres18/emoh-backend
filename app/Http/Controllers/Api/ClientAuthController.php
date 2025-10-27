@@ -52,68 +52,45 @@ class ClientAuthController extends Controller
      */
     public function register(Request $request): JsonResponse
     {
-        try {
-            $validator = Validator::make($request->all(), [
-                'name' => 'required|string|max:255',
-                'email' => 'required|string|email|max:255|unique:clients',
-                'password' => 'required|string|min:8|confirmed',
-                'phone' => 'nullable|string|max:20',
-            ]);
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:clients',
+            'password' => 'required|string|min:8|confirmed',
+            'phone' => 'nullable|string|max:20',
+        ]);
 
-            if ($validator->fails()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Validation failed',
-                    'errors' => $validator->errors()
-                ], 422);
-            }
-
-            $client = Client::create([
-                'name' => $request->name,
-                'email' => $request->email,
-                'password' => Hash::make($request->password),
-                'phone' => $request->phone,
-                'is_active' => true, // New clients are active by default
-                'last_activity' => now(), // Initialize activity tracking
-            ]);
-
-            // Generate and send OTP for email verification (real-time)
-            try {
-                $otp = $client->generateEmailVerificationOTP();
-                Mail::to($client->email)->send(new ClientOTPVerification($client, $otp));
-            } catch (\Exception $mailError) {
-                \Log::error('Failed to send verification email during registration', [
-                    'client_id' => $client->id,
-                    'email' => $client->email,
-                    'error' => $mailError->getMessage()
-                ]);
-                // Continue registration even if email fails
-            }
-
-            $token = $client->createToken($this->resolveTokenName($request))->plainTextToken;
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Client registered successfully. Please check your email for the verification code.',
-                'data' => [
-                    'client' => $this->transformClient($client),
-                    'token' => $token,
-                    'requires_email_verification' => true
-                ]
-            ], 201);
-        } catch (\Exception $e) {
-            \Log::error('Client registration failed', [
-                'email' => $request->email ?? 'unknown',
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-
+        if ($validator->fails()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Registration failed. Please try again later.',
-                'error' => config('app.debug') ? $e->getMessage() : null
-            ], 500);
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
         }
+
+        $client = Client::create([
+            'name' => $request->name,
+            'email' => $request->email,
+            'password' => Hash::make($request->password),
+            'phone' => $request->phone,
+            'is_active' => true, // New clients are active by default
+            'last_activity' => now(), // Initialize activity tracking
+        ]);
+
+        // Generate and send OTP for email verification (real-time)
+        $otp = $client->generateEmailVerificationOTP();
+        Mail::to($client->email)->send(new ClientOTPVerification($client, $otp));
+
+        $token = $client->createToken($this->resolveTokenName($request))->plainTextToken;
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Client registered successfully. Please check your email for the verification code.',
+            'data' => [
+                'client' => $this->transformClient($client),
+                'token' => $token,
+                'requires_email_verification' => true
+            ]
+        ], 201);
     }
 
     /**
@@ -121,100 +98,86 @@ class ClientAuthController extends Controller
      */
     public function login(Request $request): JsonResponse
     {
-        try {
-            $validator = Validator::make($request->all(), [
-                'email' => 'required|email',
-                'password' => 'required|string',
-                'fingerprint' => 'nullable|string|max:100', // Browser fingerprint
-            ]);
+        $validator = Validator::make($request->all(), [
+            'email' => 'required|email',
+            'password' => 'required|string',
+            'fingerprint' => 'nullable|string|max:100', // Browser fingerprint
+        ]);
 
-            if ($validator->fails()) {
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        $client = Client::where('email', $request->email)->first();
+
+        // Check if account exists and is locked
+        if ($client && $client->isLocked()) {
+            $minutesRemaining = $client->getMinutesUntilUnlock();
+            return response()->json([
+                'success' => false,
+                'message' => 'Account temporarily locked due to multiple failed login attempts.',
+                'data' => [
+                    'locked' => true,
+                    'minutes_remaining' => $minutesRemaining,
+                    'unlock_at' => $client->locked_until?->format('Y-m-d H:i:s')
+                ]
+            ], 423); // 423 Locked
+        }
+
+        // Validate credentials
+        if (!$client || !Hash::check($request->password, $client->password)) {
+            // Record failed attempt if client exists
+            if ($client) {
+                $client->recordFailedLogin();
+
+                $attemptsRemaining = max(0, 5 - $client->failed_login_attempts);
+
                 return response()->json([
                     'success' => false,
-                    'message' => 'Validation failed',
-                    'errors' => $validator->errors()
-                ], 422);
-            }
-
-            $client = Client::where('email', $request->email)->first();
-
-            // Check if account exists and is locked
-            if ($client && $client->isLocked()) {
-                $minutesRemaining = $client->getMinutesUntilUnlock();
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Account temporarily locked due to multiple failed login attempts.',
+                    'message' => 'Invalid credentials',
                     'data' => [
-                        'locked' => true,
-                        'minutes_remaining' => $minutesRemaining,
-                        'unlock_at' => $client->locked_until?->format('Y-m-d H:i:s')
+                        'attempts_remaining' => $attemptsRemaining,
+                        'warning' => $attemptsRemaining <= 2 ? 'Account will be locked after ' . $attemptsRemaining . ' more failed attempt(s)' : null
                     ]
-                ], 423); // 423 Locked
-            }
-
-            // Validate credentials
-            if (!$client || !Hash::check($request->password, $client->password)) {
-                // Record failed attempt if client exists
-                if ($client) {
-                    $client->recordFailedLogin();
-
-                    $attemptsRemaining = max(0, 5 - $client->failed_login_attempts);
-
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Invalid credentials',
-                        'data' => [
-                            'attempts_remaining' => $attemptsRemaining,
-                            'warning' => $attemptsRemaining <= 2 ? 'Account will be locked after ' . $attemptsRemaining . ' more failed attempt(s)' : null
-                        ]
-                    ], 401);
-                }
-
-                // Generic error for non-existent accounts (prevent user enumeration)
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Invalid credentials'
                 ], 401);
             }
 
-            // Check if client account is active
-            if (!$client->is_active) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Your account has been deactivated. Please contact support for assistance.'
-                ], 403);
-            }
-
-            // Get client IP
-            $ip = $request->ip();
-            $fingerprint = $request->input('fingerprint');
-
-            // Record successful login
-            $client->recordSuccessfulLogin($ip, $fingerprint);
-
-            $token = $client->createToken($this->resolveTokenName($request))->plainTextToken;
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Login successful',
-                'data' => [
-                    'client' => $this->transformClient($client),
-                    'token' => $token
-                ]
-            ]);
-        } catch (\Exception $e) {
-            \Log::error('Client login failed', [
-                'email' => $request->email ?? 'unknown',
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-
+            // Generic error for non-existent accounts (prevent user enumeration)
             return response()->json([
                 'success' => false,
-                'message' => 'Login failed. Please try again later.',
-                'error' => config('app.debug') ? $e->getMessage() : null
-            ], 500);
+                'message' => 'Invalid credentials'
+            ], 401);
         }
+
+        // Check if client account is active
+        if (!$client->is_active) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Your account has been deactivated. Please contact support for assistance.'
+            ], 403);
+        }
+
+        // Get client IP
+        $ip = $request->ip();
+        $fingerprint = $request->input('fingerprint');
+
+        // Record successful login
+        $client->recordSuccessfulLogin($ip, $fingerprint);
+
+        $token = $client->createToken($this->resolveTokenName($request))->plainTextToken;
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Login successful',
+            'data' => [
+                'client' => $this->transformClient($client),
+                'token' => $token
+            ]
+        ]);
     }
 
     /**
