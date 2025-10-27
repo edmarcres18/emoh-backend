@@ -9,8 +9,8 @@ import { formatCurrency } from '@/utils/currency';
 interface Property {
     id: number;
     property_name: string;
-    category: { id: number; name: string };
-    location: { id: number; name: string };
+    category: { id: number; name: string } | null;
+    location: { id: number; name: string } | null;
     estimated_monthly: number | null;
     lot_area: number | null;
     floor_area: number | null;
@@ -18,6 +18,7 @@ interface Property {
     status: string;
     is_featured: boolean;
     images: string[] | null;
+    features: string[] | null;
     created_at: string;
     updated_at: string;
 }
@@ -307,6 +308,16 @@ const toggleFeatured = () => {
                                 </div>
                                 <div v-else class="text-gray-500 dark:text-gray-400 italic">
                                     No details provided
+                                </div>
+                            </div>
+
+                            <!-- Features -->
+                            <div v-if="property.features && property.features.length > 0" class="mt-6">
+                                <label class="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Features</label>
+                                <div class="flex flex-wrap gap-2">
+                                    <span v-for="(feature, idx) in property.features" :key="idx" class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-indigo-100 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300">
+                                        {{ feature }}
+                                    </span>
                                 </div>
                             </div>
 

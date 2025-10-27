@@ -24,6 +24,8 @@ class Property extends Model
         'details',
         'status',
         'is_featured',
+        // Added features attribute to allow mass assignment
+        'features',
     ];
 
     /**
@@ -33,6 +35,8 @@ class Property extends Model
      */
     protected $casts = [
         'images' => 'array',
+        // Cast features to array for convenient handling
+        'features' => 'array',
         'estimated_monthly' => 'decimal:2',
         'lot_area' => 'decimal:2',
         'floor_area' => 'decimal:2',

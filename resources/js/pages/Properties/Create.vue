@@ -51,10 +51,25 @@ const form = useForm({
     status: 'Available',
     is_featured: false,
     images: [] as File[],
+    features: [] as string[],
 });
 
 const isSubmitting = ref(false);
 const imagePreview = ref<string[]>([]);
+
+// Features input management
+const featureInput = ref<string>('');
+const addFeature = () => {
+    const value = featureInput.value.trim();
+    if (!value) return;
+    if (!form.features.includes(value)) {
+        form.features.push(value);
+    }
+    featureInput.value = '';
+};
+const removeFeature = (index: number) => {
+    form.features.splice(index, 1);
+};
 
 const submit = () => {
     if (isSubmitting.value) return;
@@ -85,6 +100,13 @@ const submit = () => {
     // Add details if present
     if (form.details && form.details.trim() !== '') {
         formData.append('details', form.details);
+    }
+    
+    // Add features if any
+    if (form.features && form.features.length > 0) {
+        form.features.forEach((feature, index) => {
+            formData.append(`features[${index}]`, feature);
+        });
     }
     
     // Add images
@@ -432,6 +454,62 @@ const canAddMoreImages = computed(() => {
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
                             {{ form.errors.details }}
+                        </div>
+                    </div>
+
+                    <!-- Features -->
+                    <div>
+                        <label for="features" class="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                            Features
+                        </label>
+                        <div class="flex gap-2">
+                            <input
+                                id="features"
+                                v-model="featureInput"
+                                type="text"
+                                placeholder="e.g., 3 Bedrooms, Balcony, Parking"
+                                :class="[
+                                    'block w-full px-4 py-3 border rounded-lg shadow-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500',
+                                    form.errors.features 
+                                        ? 'border-red-300 dark:border-red-600 bg-red-50 dark:bg-red-900/10 text-red-900 dark:text-red-100 placeholder-red-400' 
+                                        : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:border-indigo-500'
+                                ]"
+                                :disabled="isSubmitting"
+                                @keydown.enter.prevent="addFeature"
+                            />
+                            <button
+                                type="button"
+                                @click="addFeature"
+                                :disabled="isSubmitting || !featureInput.trim()"
+                                class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white text-sm font-medium rounded-lg shadow-sm transition-colors duration-200"
+                            >
+                                Add
+                            </button>
+                        </div>
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Press Enter to add each feature.</p>
+                        <div v-if="form.features.length > 0" class="mt-3 flex flex-wrap gap-2">
+                            <span
+                                v-for="(feature, idx) in form.features"
+                                :key="idx"
+                                class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-indigo-100 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300"
+                            >
+                                {{ feature }}
+                                <button
+                                    type="button"
+                                    @click="removeFeature(idx)"
+                                    class="ml-2 text-indigo-700 dark:text-indigo-300 hover:text-indigo-900"
+                                    :disabled="isSubmitting"
+                                    title="Remove feature"
+                                >
+                                    ×
+                                </button>
+                            </span>
+                        </div>
+                        <div v-if="form.errors.features" class="mt-2 flex items-center gap-2 text-sm text-red-600 dark:text-red-400">
+                            <svg class="h-4 w-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            {{ form.errors.features }}
                         </div>
                     </div>
 

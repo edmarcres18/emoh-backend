@@ -126,6 +126,13 @@ class PropertyService
                     $data['images'] = [];
                 }
 
+                // Normalize features
+                if (isset($data['features']) && is_array($data['features'])) {
+                    $data['features'] = $this->sanitizeFeatures($data['features']);
+                } else {
+                    $data['features'] = [];
+                }
+
                 // Create the property
                 $property = Property::create($data);
                 
@@ -180,6 +187,15 @@ class PropertyService
                 
                 // Remove replace_images from data as it's not a model field
                 unset($data['replace_images']);
+
+                // Normalize features if provided; otherwise leave unchanged
+                if (array_key_exists('features', $data)) {
+                    if (is_array($data['features'])) {
+                        $data['features'] = $this->sanitizeFeatures($data['features']);
+                    } else {
+                        unset($data['features']);
+                    }
+                }
 
                 // Update the property
                 $property->update($data);
@@ -387,5 +403,20 @@ class PropertyService
                 ['value' => 'Renovation', 'label' => 'Renovation'],
             ],
         ];
+    }
+
+    // Sanitize features: trim, remove empties, de-duplicate
+    private function sanitizeFeatures(array $features): array
+    {
+        $clean = [];
+        foreach ($features as $f) {
+            if (is_string($f)) {
+                $trimmed = trim($f);
+                if ($trimmed !== '' && !in_array($trimmed, $clean, true)) {
+                    $clean[] = $trimmed;
+                }
+            }
+        }
+        return array_values($clean);
     }
 }

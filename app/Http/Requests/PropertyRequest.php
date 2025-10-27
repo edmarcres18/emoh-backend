@@ -34,6 +34,9 @@ class PropertyRequest extends FormRequest
             'images' => 'nullable|array|max:10',
             'images.*' => 'image|mimes:jpeg,png,jpg,gif,webp|max:102400', // 100MB max per image
             'replace_images' => 'boolean',
+            // Add features rules
+            'features' => 'nullable|array',
+            'features.*' => 'nullable|string|max:255',
         ];
 
         // For update requests, make some fields optional
@@ -63,6 +66,9 @@ class PropertyRequest extends FormRequest
             'floor_area' => 'floor area',
             'is_featured' => 'featured status',
             'images.*' => 'image',
+            // Add features attribute naming
+            'features' => 'features',
+            'features.*' => 'feature',
         ];
     }
 
@@ -97,6 +103,10 @@ class PropertyRequest extends FormRequest
             'images.*.image' => 'Each file must be a valid image.',
             'images.*.mimes' => 'Images must be in JPEG, PNG, JPG, GIF, or WebP format.',
             'images.*.max' => 'Each image cannot exceed 100MB in size.',
+            // Features messages
+            'features.array' => 'Features must be provided as a list.',
+            'features.*.string' => 'Each feature must be a text value.',
+            'features.*.max' => 'Each feature cannot exceed 255 characters.',
         ];
     }
 
@@ -130,6 +140,21 @@ class PropertyRequest extends FormRequest
         // Convert empty string to null for details
         if ($this->has('details') && $this->details === '') {
             $this->merge(['details' => null]);
+        }
+
+        // Normalize features: trim, remove empties
+        if ($this->has('features') && is_array($this->features)) {
+            $normalized = collect($this->features)
+                ->map(function ($f) {
+                    return is_string($f) ? trim($f) : $f;
+                })
+                ->filter(function ($f) {
+                    return is_string($f) && $f !== '';
+                })
+                ->values()
+                ->all();
+
+            $this->merge(['features' => $normalized]);
         }
     }
 
