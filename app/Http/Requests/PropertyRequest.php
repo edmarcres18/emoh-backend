@@ -34,6 +34,8 @@ class PropertyRequest extends FormRequest
             'images' => 'nullable|array|max:10',
             'images.*' => 'image|mimes:jpeg,png,jpg,gif,webp|max:102400', // 100MB max per image
             'replace_images' => 'boolean',
+            'delete_existing_images' => 'nullable|array',
+            'delete_existing_images.*' => 'string',
             // Add features rules
             'features' => 'nullable|array',
             'features.*' => 'nullable|string|max:255',
@@ -103,6 +105,8 @@ class PropertyRequest extends FormRequest
             'images.*.image' => 'Each file must be a valid image.',
             'images.*.mimes' => 'Images must be in JPEG, PNG, JPG, GIF, or WebP format.',
             'images.*.max' => 'Each image cannot exceed 100MB in size.',
+            'delete_existing_images.array' => 'Invalid deleted images list.',
+            'delete_existing_images.*.string' => 'Each deleted image must be a valid path.',
             // Features messages
             'features.array' => 'Features must be provided as a list.',
             'features.*.string' => 'Each feature must be a text value.',
@@ -155,6 +159,21 @@ class PropertyRequest extends FormRequest
                 ->all();
 
             $this->merge(['features' => $normalized]);
+        }
+
+        // Normalize delete_existing_images: trim, remove empties
+        if ($this->has('delete_existing_images') && is_array($this->delete_existing_images)) {
+            $normalizedDeleted = collect($this->delete_existing_images)
+                ->map(function ($p) {
+                    return is_string($p) ? trim($p) : $p;
+                })
+                ->filter(function ($p) {
+                    return is_string($p) && $p !== '';
+                })
+                ->values()
+                ->all();
+
+            $this->merge(['delete_existing_images' => $normalizedDeleted]);
         }
     }
 

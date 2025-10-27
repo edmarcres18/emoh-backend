@@ -164,29 +164,46 @@ class PropertyService
             try {
                 $imagesToDelete = [];
                 $uploadedImages = [];
-                
+
+                // Start from existing images
+                $existingImages = $property->images ?? [];
+
+                // Handle full replacement first
+                if (isset($data['replace_images']) && $data['replace_images']) {
+                    if (!empty($existingImages)) {
+                        $imagesToDelete = $existingImages;
+                    }
+                    $existingImages = [];
+                } else {
+                    // Handle partial deletions of existing images
+                    if (isset($data['delete_existing_images']) && is_array($data['delete_existing_images']) && count($data['delete_existing_images']) > 0) {
+                        // Intersect to ensure only existing images are deleted
+                        $toDelete = array_values(array_intersect($existingImages, $data['delete_existing_images']));
+                        if (!empty($toDelete)) {
+                            $imagesToDelete = array_merge($imagesToDelete, $toDelete);
+                            $existingImages = array_values(array_diff($existingImages, $toDelete));
+                        }
+                    }
+                }
+
                 // Handle image uploads if present
                 if (isset($data['images']) && is_array($data['images']) && count($data['images']) > 0) {
-                    $existingImages = $property->images ?? [];
-                    
-                    // Delete old images if replacing
-                    if (isset($data['replace_images']) && $data['replace_images']) {
-                        if ($existingImages) {
-                            $imagesToDelete = $existingImages;
-                        }
-                        $existingImages = [];
-                    }
-                    
-                    // Upload new images and merge with existing
+                    // Upload new images and merge with remaining existing
                     $uploadedImages = $this->handleImageUploads($data['images'], $existingImages);
                     $data['images'] = $uploadedImages;
                 } else {
-                    // Remove images key if no new images to avoid overwriting existing ones
-                    unset($data['images']);
+                    // If existing images changed (due to deletions or replacement), persist the new list
+                    if (isset($data['replace_images']) || isset($data['delete_existing_images'])) {
+                        $data['images'] = $existingImages;
+                    } else {
+                        // Remove images key if no changes to avoid overwriting existing ones
+                        unset($data['images']);
+                    }
                 }
-                
-                // Remove replace_images from data as it's not a model field
+
+                // Remove non-model fields
                 unset($data['replace_images']);
+                unset($data['delete_existing_images']);
 
                 // Normalize features if provided; otherwise leave unchanged
                 if (array_key_exists('features', $data)) {

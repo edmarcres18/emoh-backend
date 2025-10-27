@@ -50,6 +50,9 @@ const form = useForm({
     is_featured: props.property.is_featured,
     images: [] as File[],
     features: props.property.features || [],
+    // Image management
+    replace_images: false,
+    delete_existing_images: [] as string[],
 });
 
 const isSubmitting = ref(false);
@@ -94,6 +97,13 @@ const submit = () => {
             formData.append(`features[${index}]`, feature);
         });
     }
+
+    // Add existing images marked for deletion
+    if (form.delete_existing_images && form.delete_existing_images.length > 0) {
+        form.delete_existing_images.forEach((image, index) => {
+            formData.append(`delete_existing_images[${index}]`, image);
+        });
+    }
     
     // Add images
     if (form.images && form.images.length > 0) {
@@ -128,8 +138,10 @@ const handleImageUpload = (event: Event) => {
     if (files) {
         const newFiles = Array.from(files);
         
-        // Calculate existing images count
-        const existingCount = form.replace_images ? 0 : (props.property.images?.length || 0);
+        // Calculate existing images count considering marked deletions
+        const existingCountBase = form.replace_images ? 0 : (props.property.images?.length || 0);
+        const existingMarkedForDeletion = form.delete_existing_images?.length || 0;
+        const existingCount = Math.max(0, existingCountBase - existingMarkedForDeletion);
         const totalImages = existingCount + form.images.length + newFiles.length;
         
         if (totalImages > 10) {
@@ -172,6 +184,19 @@ const handleImageUpload = (event: Event) => {
 const removeImage = (index: number) => {
     form.images.splice(index, 1);
     imagePreview.value.splice(index, 1);
+};
+
+// Existing image deletion toggling
+const isMarkedForDeletion = (image: string) => {
+    return form.delete_existing_images.includes(image);
+};
+const toggleExistingImageDeletion = (image: string) => {
+    const idx = form.delete_existing_images.indexOf(image);
+    if (idx !== -1) {
+        form.delete_existing_images.splice(idx, 1);
+    } else {
+        form.delete_existing_images.push(image);
+    }
 };
 
 const formatDate = (dateString: string) => {
@@ -476,16 +501,40 @@ const removeFeature = (index: number) => {
                             <label class="block text-sm font-semibold text-gray-700 dark:text-gray-300">
                                 Current Images
                             </label>
-                            <span class="text-xs text-gray-500 dark:text-gray-400">{{ property.images.length }} {{ property.images.length === 1 ? 'image' : 'images' }}</span>
+                            <span class="text-xs text-gray-500 dark:text-gray-400">
+                                {{ property.images.length - form.delete_existing_images.length }}
+                                {{ (property.images.length - form.delete_existing_images.length) === 1 ? 'image' : 'images' }}
+                                <span v-if="form.delete_existing_images.length > 0" class="ml-2 text-red-600 dark:text-red-400">({{ form.delete_existing_images.length }} marked for deletion)</span>
+                            </span>
                         </div>
                         <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 mb-4">
                             <div v-for="(image, index) in property.images" :key="index" class="relative group">
-                                <div class="aspect-square rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800 shadow-sm ring-1 ring-gray-200 dark:ring-gray-700">
+                                <div
+                                    class="aspect-square rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800 shadow-sm ring-1 ring-gray-200 dark:ring-gray-700"
+                                    :class="isMarkedForDeletion(image) ? 'opacity-60 grayscale' : ''"
+                                >
                                     <img 
                                         :src="`/storage/${image}`" 
                                         :alt="`Current image ${index + 1}`"
                                         class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                                     >
+                                </div>
+                                <button
+                                    type="button"
+                                    @click="toggleExistingImageDeletion(image)"
+                                    class="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1.5 shadow-lg opacity-0 group-hover:opacity-100 transition-all duration-200 transform hover:scale-110"
+                                    :disabled="isSubmitting || form.replace_images"
+                                    :title="isMarkedForDeletion(image) ? 'Undo deletion' : 'Delete image'"
+                                >
+                                    <svg v-if="!isMarkedForDeletion(image)" class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5-4h4m-6 4h8" />
+                                    </svg>
+                                    <svg v-else class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+                                    </svg>
+                                </button>
+                                <div v-if="isMarkedForDeletion(image)" class="absolute inset-0 bg-red-600/40 flex items-center justify-center rounded-xl">
+                                    <span class="text-xs font-semibold text-white bg-red-700/80 px-2 py-1 rounded-md">Marked for deletion</span>
                                 </div>
                                 <div class="absolute bottom-2 left-2 bg-black/50 text-white text-xs px-2 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                                     {{ index + 1 }}
