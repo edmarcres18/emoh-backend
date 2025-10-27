@@ -96,6 +96,9 @@ const submit = () => {
         form.features.forEach((feature, index) => {
             formData.append(`features[${index}]`, feature);
         });
+    } else {
+        // Ensure features key exists to clear all features server-side
+        formData.append('features[0]', '');
     }
 
     // Add existing images marked for deletion
@@ -238,6 +241,34 @@ const addFeature = () => {
 };
 const removeFeature = (index: number) => {
     form.features.splice(index, 1);
+};
+
+// Inline feature editing
+const editingIndex = ref<number | null>(null);
+const editedFeature = ref<string>('');
+const startEditFeature = (index: number) => {
+    editingIndex.value = index;
+    editedFeature.value = form.features[index];
+};
+const saveEditedFeature = () => {
+    if (editingIndex.value === null) return;
+    const value = editedFeature.value.trim();
+    if (!value) return;
+    const existingIdx = form.features.findIndex((f) => f === value);
+    if (existingIdx !== -1 && existingIdx !== editingIndex.value) {
+        // Prevent duplicate features
+        return;
+    }
+    form.features[editingIndex.value] = value;
+    editingIndex.value = null;
+    editedFeature.value = '';
+};
+const cancelEditFeature = () => {
+    editingIndex.value = null;
+    editedFeature.value = '';
+};
+const clearAllFeatures = () => {
+    form.features = [];
 };
 </script>
 
@@ -467,6 +498,14 @@ const removeFeature = (index: number) => {
                             >
                                 Add
                             </button>
+                            <button
+                                type="button"
+                                @click="clearAllFeatures"
+                                :disabled="isSubmitting || form.features.length === 0"
+                                class="px-4 py-2 bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 disabled:opacity-60 text-gray-800 dark:text-gray-200 text-sm font-medium rounded-lg shadow-sm transition-colors duration-200"
+                            >
+                                Clear All
+                            </button>
                         </div>
                         <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Press Enter to add each feature.</p>
                         <div v-if="form.features.length > 0" class="mt-3 flex flex-wrap gap-2">
@@ -475,16 +514,54 @@ const removeFeature = (index: number) => {
                                 :key="idx"
                                 class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-indigo-100 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300"
                             >
-                                {{ feature }}
-                                <button
-                                    type="button"
-                                    @click="removeFeature(idx)"
-                                    class="ml-2 text-indigo-700 dark:text-indigo-300 hover:text-indigo-900"
-                                    :disabled="isSubmitting"
-                                    title="Remove feature"
-                                >
-                                    ×
-                                </button>
+                                <template v-if="editingIndex === idx">
+                                    <input
+                                        v-model="editedFeature"
+                                        type="text"
+                                        class="px-2 py-1 text-xs rounded bg-white dark:bg-gray-800 border border-indigo-300 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300"
+                                        @keydown.enter.prevent="saveEditedFeature"
+                                        :disabled="isSubmitting"
+                                    />
+                                    <button
+                                        type="button"
+                                        @click="saveEditedFeature"
+                                        class="ml-2 text-indigo-700 dark:text-indigo-300 hover:text-indigo-900"
+                                        :disabled="isSubmitting || !editedFeature.trim()"
+                                        title="Save"
+                                    >
+                                        Save
+                                    </button>
+                                    <button
+                                        type="button"
+                                        @click="cancelEditFeature"
+                                        class="ml-1 text-indigo-700 dark:text-indigo-300 hover:text-indigo-900"
+                                        :disabled="isSubmitting"
+                                        title="Cancel"
+                                    >
+                                        Cancel
+                                    </button>
+                                </template>
+                                <template v-else>
+                                    {{ feature }}
+                                    <button
+                                        type="button"
+                                        @click="startEditFeature(idx)"
+                                        class="ml-2 text-indigo-700 dark:text-indigo-300 hover:text-indigo-900"
+                                        :disabled="isSubmitting"
+                                        title="Edit feature"
+                                    >
+                                        ✎
+                                    </button>
+                                    <button
+                                        type="button"
+                                        @click="removeFeature(idx)"
+                                        class="ml-1 text-indigo-700 dark:text-indigo-300 hover:text-indigo-900"
+                                        :disabled="isSubmitting"
+                                        title="Remove feature"
+                                    >
+                                        ×
+                                    </button>
+                                </template>
                             </span>
                         </div>
                         <div v-if="form.errors.features" class="mt-2 flex items-center gap-2 text-sm text-red-600 dark:text-red-400">
