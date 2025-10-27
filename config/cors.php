@@ -19,14 +19,15 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => [
+    'allowed_origins' => array_filter([
         'http://localhost:8000',
         'http://127.0.0.1:8000',
         'http://localhost:5173',
         'http://127.0.0.1:5173',
         'https://chuweydev.site',
         'https://emoh.chuweydev.site',
-    ],
+        env('CORS_ALLOWED_ORIGINS') ? env('CORS_ALLOWED_ORIGINS') : null,
+    ]),
 
     'allowed_origins_patterns' => [],
 
