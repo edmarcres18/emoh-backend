@@ -91,8 +91,6 @@
                                 <td class="px-6 py-4 text-right">
                                     <div class="flex justify-end gap-2">
                                         <Link :href="`/admin/inquiries/${inq.id}`" class="text-xs px-3 py-1 rounded-lg border">View</Link>
-                                        <button class="text-xs px-3 py-1 rounded-lg border" @click="updateStatus(inq.id, 'contacted')">Mark Contacted</button>
-                                        <button class="text-xs px-3 py-1 rounded-lg border" @click="updateStatus(inq.id, 'closed')">Close</button>
                                     </div>
                                 </td>
                             </tr>
