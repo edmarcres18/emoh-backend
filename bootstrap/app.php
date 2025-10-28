@@ -7,6 +7,7 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
 use Illuminate\Http\Middleware\HandleCors;
+use Illuminate\Console\Scheduling\Schedule;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -15,6 +16,28 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
+    ->withSchedule(function (Schedule $schedule) {
+        // Daily database backup at 2:00 AM
+        $schedule->command('backup:database --keep-days=30')
+            ->dailyAt('02:00')
+            ->name('daily-database-backup')
+            ->withoutOverlapping()
+            ->runInBackground();
+
+        // Weekly cleanup of old backups (every Sunday at 3:00 AM)
+        $schedule->command('backup:cleanup --retention=30')
+            ->weeklyOn(0, '03:00')
+            ->name('weekly-backup-cleanup')
+            ->withoutOverlapping()
+            ->runInBackground();
+
+        // Monthly deep cleanup (keep only 90 days, every 1st of month at 4:00 AM)
+        $schedule->command('backup:cleanup --retention=90')
+            ->monthlyOn(1, '04:00')
+            ->name('monthly-backup-cleanup')
+            ->withoutOverlapping()
+            ->runInBackground();
+    })
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
 
