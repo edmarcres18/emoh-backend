@@ -11,7 +11,7 @@ import admin from '@/routes/admin';
 import databaseBackup from '@/routes/database-backup';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/vue3';
-import { BookOpen, Folder, LayoutGrid, Tags, Navigation, House, Lock, Users, Shield, Settings, Home, Database } from 'lucide-vue-next';
+import { BookOpen, Folder, LayoutGrid, Tags, Navigation, House, Lock, Users, Shield, Settings, Home, Database, MessageSquare } from 'lucide-vue-next';
 import AppLogo from './AppLogo.vue';
 import { useAuth } from '@/composables/useAuth';
 import { computed, onMounted } from 'vue';
@@ -70,6 +70,11 @@ const mainNavItems = computed((): NavItem[] => {
                 title: 'Clients',
                 href: admin.clients.index(),
                 icon: Users,
+            },
+            {
+                title: 'Inquiries',
+                href: admin.inquiries.index(),
+                icon: MessageSquare,
             },
             {
                 title: 'Rented',

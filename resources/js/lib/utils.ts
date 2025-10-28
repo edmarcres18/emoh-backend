@@ -50,6 +50,12 @@ export function urlIsActive(urlToCheck: NonNullable<InertiaLinkProps['href']>, c
         return true;
     }
 
+    // Check for admin routes - if the nav item is /admin/inquiries,
+    // it should be active for /admin/inquiries and any subpaths
+    if (checkUrl === '/admin/inquiries' && currentUrl.match(/^\/admin\/inquiries(\/|$|\?)/)) {
+        return true;
+    }
+
     // Check for admin routes - if the nav item is /admin/database-backup,
     // it should be active for /admin/database-backup, /admin/database-backup/create, /admin/database-backup/{id}, /admin/database-backup/{id}/edit
     // Also handles query parameters like ?search=&sort=latest&trash=true

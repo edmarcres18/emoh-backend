@@ -10,6 +10,7 @@ use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\ClientController;
 use App\Http\Controllers\Admin\SiteSettingsController;
 use App\Http\Controllers\Admin\RentedController;
+use App\Http\Controllers\Admin\InquiryController;
 use App\Http\Controllers\Admin\DatabaseBackupController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -90,6 +91,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('clients/{client}', [ClientController::class, 'show'])->name('admin.clients.show');
         Route::get('clients/{client}/edit', [ClientController::class, 'edit'])->name('admin.clients.edit');
         Route::put('clients/{client}', [ClientController::class, 'update'])->name('admin.clients.update');
+
+        // Inquiries monitoring
+        Route::get('inquiries', [InquiryController::class, 'indexPage'])->name('admin.inquiries.index');
         Route::delete('clients/{client}', [ClientController::class, 'destroy'])->name('admin.clients.destroy');
         Route::post('clients/{client}/verify-email', [ClientController::class, 'verifyEmail'])->name('admin.clients.verify-email');
         Route::post('clients/{client}/unverify-email', [ClientController::class, 'unverifyEmail'])->name('admin.clients.unverify-email');
@@ -159,6 +163,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::get('clients/{client}', [ClientController::class, 'show'])->name('admin.api.clients.show');
             Route::put('clients/{client}', [ClientController::class, 'update'])->name('admin.api.clients.update');
             Route::delete('clients/{client}', [ClientController::class, 'destroy'])->name('admin.api.clients.destroy');
+
+            // API route to update inquiry status
+            Route::patch('inquiries/{inquiry}/status', [InquiryController::class, 'updateStatus'])->name('admin.api.inquiries.update-status');
 
             // API routes for rented management
             Route::get('rented', [RentedController::class, 'index'])->name('admin.api.rented.index');

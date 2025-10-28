@@ -159,6 +159,14 @@ class Client extends Authenticatable
     }
 
     /**
+     * Get inquiries submitted by the client.
+     */
+    public function inquiries(): HasMany
+    {
+        return $this->hasMany(\App\Models\Inquiry::class);
+    }
+
+    /**
      * Check if the client has any active rentals.
      */
     public function hasActiveRentals(): bool

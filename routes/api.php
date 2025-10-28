@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\SiteSettingsController;
 use App\Http\Controllers\Api\ClientAuthController;
 use App\Http\Controllers\Api\PropertyApiController;
 use App\Http\Controllers\Api\SiteSettingApiController;
+use App\Http\Controllers\Api\ClientInquiryController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -75,6 +76,10 @@ Route::prefix('client')->group(function () {
 
         // Client rental properties routes
         Route::get('/my-rentals', [ClientAuthController::class, 'getClientRentals']);
+
+        // Client inquiries routes
+        Route::post('/inquiries', [ClientInquiryController::class, 'store']);
+        Route::get('/inquiries', [ClientInquiryController::class, 'index']);
     });
 });
 
