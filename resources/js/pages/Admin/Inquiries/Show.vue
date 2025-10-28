@@ -54,12 +54,6 @@
                         </div>
                     </div>
                 </div>
-
-                <div class="space-y-6">
-                    <div class="bg-white dark:bg-gray-900 rounded-xl p-6 shadow-sm ring-1 ring-gray-200 dark:ring-gray-800">
-                        <div class="text-sm font-semibold text-gray-900 dark:text-gray-100">Actions</div>
-                    </div>
-                </div>
             </div>
         </div>
     </AppLayout>
