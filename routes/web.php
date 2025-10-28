@@ -150,14 +150,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::put('permissions/{permission}', [PermissionController::class, 'update'])->name('admin.api.permissions.update');
             Route::delete('permissions/{permission}', [PermissionController::class, 'destroy'])->name('admin.api.permissions.destroy');
 
-            // API routes for users management
-            Route::get('users', [UserController::class, 'index'])->name('admin.api.users.index');
-            Route::post('users', [UserController::class, 'store'])->name('admin.api.users.store');
-            Route::get('users/{user}', [UserController::class, 'show'])->name('admin.api.users.show');
-            Route::put('users/{user}', [UserController::class, 'update'])->name('admin.api.users.update');
-            Route::delete('users/{user}', [UserController::class, 'destroy'])->name('admin.api.users.destroy');
-            Route::get('users-roles', [UserController::class, 'roles'])->name('admin.api.users.roles');
-            Route::patch('users/{user}/reset-password', [UserController::class, 'resetPassword'])->name('admin.api.users.reset-password');
+        // API routes for users management
+        Route::get('users', [UserController::class, 'index'])->name('admin.api.users.index');
+        Route::post('users', [UserController::class, 'store'])->name('admin.api.users.store');
+        Route::get('users/{user}', [UserController::class, 'show'])->name('admin.api.users.show');
+        Route::put('users/{user}', [UserController::class, 'update'])->name('admin.api.users.update');
+        Route::delete('users/{user}', [UserController::class, 'destroy'])->name('admin.api.users.destroy');
+        Route::get('users-roles', [UserController::class, 'roles'])->name('admin.api.users.roles');
+        Route::patch('users/{user}/reset-password', [UserController::class, 'resetPassword'])->name('admin.api.users.reset-password');
+
+            // Admin counters for sidebar badges
+            Route::get('counters', [\App\Http\Controllers\Admin\StatsController::class, 'counters'])->name('admin.api.counters');
 
             // API routes for clients management
             Route::get('clients', [ClientController::class, 'index'])->name('admin.api.clients.index');

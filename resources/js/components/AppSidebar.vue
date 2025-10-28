@@ -14,7 +14,7 @@ import { Link } from '@inertiajs/vue3';
 import { BookOpen, Folder, LayoutGrid, Tags, Navigation, House, Lock, Users, Shield, Settings, Home, Database, MessageSquare } from 'lucide-vue-next';
 import AppLogo from './AppLogo.vue';
 import { useAuth } from '@/composables/useAuth';
-import { computed, onMounted } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 
 const {
     isAdminOrSystemAdmin,
@@ -25,8 +25,27 @@ const {
     fetchUser
 } = useAuth();
 
+const clientNewCount = ref<number>(0);
+const inquiryUnviewedCount = ref<number>(0);
+
+const fetchCounters = async () => {
+    try {
+        const response = await fetch('/admin/api/counters', {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        });
+        if (response.ok) {
+            const data = await response.json();
+            clientNewCount.value = Number(data?.clients_new_last_2_days ?? 0);
+            inquiryUnviewedCount.value = Number(data?.inquiries_unviewed ?? 0);
+        }
+    } catch (e) {
+        console.error('Failed to fetch admin counters:', e);
+    }
+};
+
 onMounted(() => {
     fetchUser();
+    fetchCounters();
 });
 
 const mainNavItems = computed((): NavItem[] => {
@@ -70,11 +89,13 @@ const mainNavItems = computed((): NavItem[] => {
                 title: 'Clients',
                 href: admin.clients.index(),
                 icon: Users,
+                badge: clientNewCount.value,
             },
             {
                 title: 'Inquiries',
                 href: admin.inquiries.index(),
                 icon: MessageSquare,
+                badge: inquiryUnviewedCount.value,
             },
             {
                 title: 'Rented',
