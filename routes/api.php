@@ -15,7 +15,6 @@ Route::get('/user', function (Request $request) {
 Route::get('/contact-info', [SiteSettingsController::class, 'getContactInfo']);
 
 // Categories and Locations API Routes - Public access for property search
-Route::group(function () {
     Route::get('/categories', function () {
         $categories = \App\Models\Category::select('id', 'name', 'description')
             ->orderBy('name', 'asc')
@@ -49,7 +48,7 @@ Route::group(function () {
             ], 200);
         }
     });
-});
+// (Removed unnecessary group wrapper to avoid Router::group signature error)
 
 // Client Authentication Routes
 Route::prefix('client')->group(function () {
@@ -95,8 +94,7 @@ Route::prefix('properties')->middleware(['api'])->group(function () {
 
 // Site Settings API Routes - Public read access with rate limiting, protected write access
 Route::prefix('site-settings')->group(function () {
-    // Public GET routes with rate limiting (60 requests per minute)
-    Route::group(function () {
+    // Public GET routes
         // Get all settings
         Route::get('/all', [SiteSettingApiController::class, 'getAllSettings']);
 
@@ -150,7 +148,7 @@ Route::prefix('site-settings')->group(function () {
 
         // Google Analytics
         Route::get('/google-analytics-id', [SiteSettingApiController::class, 'getGoogleAnalyticsId']);
-    });
+    // (Removed unnecessary group wrapper to avoid Router::group signature error)
 
     // Protected PUT routes - Require authentication (admin only)
     Route::middleware(['auth:sanctum'])->group(function () {
