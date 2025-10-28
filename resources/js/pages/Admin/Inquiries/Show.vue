@@ -58,10 +58,6 @@
                 <div class="space-y-6">
                     <div class="bg-white dark:bg-gray-900 rounded-xl p-6 shadow-sm ring-1 ring-gray-200 dark:ring-gray-800">
                         <div class="text-sm font-semibold text-gray-900 dark:text-gray-100">Actions</div>
-                        <div class="mt-4 flex flex-col gap-2">
-                            <button class="text-sm px-3 py-2 rounded-lg border" @click="updateStatus('contacted')">Mark Contacted</button>
-                            <button class="text-sm px-3 py-2 rounded-lg border" @click="updateStatus('closed')">Close Inquiry</button>
-                        </div>
                     </div>
                 </div>
             </div>
