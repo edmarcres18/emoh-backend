@@ -80,12 +80,17 @@
                                     <div class="text-sm text-gray-700 dark:text-gray-300 line-clamp-2">{{ inq.message }}</div>
                                 </td>
                                 <td class="px-6 py-4">
-                                    <span v-if="inq.status === 'new'" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300">New</span>
-                                    <span v-else-if="inq.status === 'contacted'" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300">Contacted</span>
-                                    <span v-else class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300">Closed</span>
+                                    <div class="flex items-center gap-2">
+                                        <span v-if="inq.status === 'new'" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300">New</span>
+                                        <span v-else-if="inq.status === 'contacted'" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300">Contacted</span>
+                                        <span v-else class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300">Closed</span>
+                                        <span v-if="!inq.viewed_at" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 dark:bg-indigo-900/30 text-indigo-800 dark:text-indigo-300">Unread</span>
+                                        <span v-else class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-800/30 text-gray-700 dark:text-gray-300">Viewed</span>
+                                    </div>
                                 </td>
                                 <td class="px-6 py-4 text-right">
                                     <div class="flex justify-end gap-2">
+                                        <Link :href="`/admin/inquiries/${inq.id}`" class="text-xs px-3 py-1 rounded-lg border">View</Link>
                                         <button class="text-xs px-3 py-1 rounded-lg border" @click="updateStatus(inq.id, 'contacted')">Mark Contacted</button>
                                         <button class="text-xs px-3 py-1 rounded-lg border" @click="updateStatus(inq.id, 'closed')">Close</button>
                                     </div>

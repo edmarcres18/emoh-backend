@@ -94,6 +94,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         // Inquiries monitoring
         Route::get('inquiries', [InquiryController::class, 'indexPage'])->name('admin.inquiries.index');
+        Route::get('inquiries/{inquiry}', [InquiryController::class, 'show'])->name('admin.inquiries.show');
         Route::delete('clients/{client}', [ClientController::class, 'destroy'])->name('admin.clients.destroy');
         Route::post('clients/{client}/verify-email', [ClientController::class, 'verifyEmail'])->name('admin.clients.verify-email');
         Route::post('clients/{client}/unverify-email', [ClientController::class, 'unverifyEmail'])->name('admin.clients.unverify-email');
@@ -187,7 +188,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // API endpoint to get current user with roles
     Route::get('api/user', function () {
-        return response()->json(auth()->user()->load('roles.permissions'));
+        return response()->json(request()->user()->load('roles.permissions'));
     })->name('api.user');
 });
 

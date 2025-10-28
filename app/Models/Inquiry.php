@@ -18,6 +18,11 @@ class Inquiry extends Model
         'phone',
         'message',
         'status',
+        'viewed_at',
+    ];
+
+    protected $casts = [
+        'viewed_at' => 'datetime',
     ];
 
     public function client(): BelongsTo

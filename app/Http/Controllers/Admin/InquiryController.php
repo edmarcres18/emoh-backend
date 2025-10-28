@@ -65,4 +65,24 @@ class InquiryController extends Controller
         $inquiry->update(['status' => $validated['status']]);
         return response()->json(['success' => true, 'message' => 'Status updated', 'data' => $inquiry]);
     }
+
+    /**
+     * Show a single inquiry (Inertia page) and mark as viewed.
+     */
+    public function show(Inquiry $inquiry): Response
+    {
+        if (!auth()->user()->hasAnyRole(['System Admin', 'Admin'])) {
+            abort(403, 'You do not have permission to view inquiries');
+        }
+
+        if (is_null($inquiry->viewed_at)) {
+            $inquiry->update(['viewed_at' => now()]);
+        }
+
+        $inquiry->load(['client', 'property', 'property.category', 'property.location']);
+
+        return Inertia::render('Admin/Inquiries/Show', [
+            'inquiry' => $inquiry,
+        ]);
+    }
 }
